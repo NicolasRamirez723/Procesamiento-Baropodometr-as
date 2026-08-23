@@ -1,1 +1,5 @@
 data/
+Baropodometrias procesadas/
+.venv/
+__pycache__/
+*.py[cod]

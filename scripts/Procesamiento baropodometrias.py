@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
+
+"Se extraen trayectoria de COP para x e y, COP_y vs COP_x y fuerza-t"
 MAX_PLOT_FRAMES = 5000
 
 
@@ -192,4 +194,5 @@ def read_data():
 if __name__ == "__main__":
 
     read_data()
+    
 

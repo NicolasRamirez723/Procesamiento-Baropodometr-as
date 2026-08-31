@@ -32,53 +32,60 @@ def recortar_huella(frame):
     return np.rot90(frame[fila_inicio:fila_fin, columna_inicio:columna_fin])
 
 
-def generar_mapa_calor():
+def generar_funcion_P(graficar=True):
+    # A partir de los registros baropodométricos se reconstruye una función de la presión
+    # en función de x, y y t.
     todos_los_frames = []
 
-    for paciente in [1,2]:
+    PATH = "data/muestras/The nature of functional variability in plantar pressure during a range of controlled walking speeds"
 
-        for pasada in [1,3,5,7,9]:
-            PATH = f"data/muestras/The nature of functional variability in plantar pressure during a range of controlled walking speeds/Subjects1_2/Subject{paciente}_1p{pasada}.txt"
+    for archivo in sorted(os.listdir(path=PATH)):
 
-            with open(PATH, "r") as archive:
-                frames_mapa_calor = []
+        if not archivo.endswith(".txt"):
+            continue
 
-                for line in islice(archive, linea_inicio_datos, None):
-                    valores = line.strip().split()
+        NEW_PATH = os.path.join(PATH, archivo)
+        nombre_base = os.path.splitext(archivo)[0]
+        paciente = nombre_base.split("_")[0]
+
+        with open(NEW_PATH, "r", encoding="utf-8") as archive:
+            frames_mapa_calor = []
+
+            for line in islice(archive, linea_inicio_datos, None):
+                valores = line.strip().split()
+
+                if len(valores) != 129 or not valores[0].startswith("y"):
+                    continue
+
+                try:
+                    primera_fila = [float(valor) for valor in valores[1:]]
+                except ValueError:
+                    continue
+
+                mapa_presiones = [primera_fila]
+
+                for fila in islice(archive, filas_por_mapa - 1):
+                    valores = fila.strip().split()
 
                     if len(valores) != 129 or not valores[0].startswith("y"):
-                        continue
+                        break
 
                     try:
-                        primera_fila = [float(valor) for valor in valores[1:]]
-                        
+                        mapa_presiones.append([float(valor) for valor in valores[1:]])
                     except ValueError:
-                        continue
+                        break
 
-                    mapa_presiones = [primera_fila]
+                if len(mapa_presiones) == filas_por_mapa:
+                    frames_mapa_calor.append(mapa_presiones)
 
-                    for fila in islice(archive, filas_por_mapa - 1):
-                        valores = fila.strip().split()
+            todos_los_frames.append(frames_mapa_calor)
 
-                        if len(valores) != 129 or not valores[0].startswith("y"):
-                            break
-
-                        try:
-                            mapa_presiones.append([float(valor) for valor in valores[1:]])
-                            
-                        except ValueError:
-                            break
-
-                    if len(mapa_presiones) == filas_por_mapa:
-                        frames_mapa_calor.append(mapa_presiones)
-
-                todos_los_frames.append(frames_mapa_calor)
-
+            if graficar:
                 path_dir = os.path.join(
                     "Baropodometrias procesadas",
-                    f"Subject{paciente}",
+                    paciente,
                     "Mapa de calor",
-                    f"Pasada{pasada}"
+                    nombre_base,
                 )
                 os.makedirs(path_dir, exist_ok=True)
 
@@ -98,19 +105,19 @@ def generar_mapa_calor():
                             aspect="equal",
                             vmin=0,
                             vmax=escala_maxima,
-                            interpolation="nearest"
+                            interpolation="nearest",
                         )
                         ax.set_title(f"Frame {inicio + posicion}")
                         ax.axis("off")
 
                     fig.colorbar(imagen, ax=axes.tolist(), label="Presión", shrink=0.8)
-                    fig.suptitle(f"Paciente {paciente}, pasada {pasada}")
+                    fig.suptitle(f"Paciente {paciente}, registro {nombre_base}")
                     fig.tight_layout()
 
                     numero_montaje = inicio // frames_por_montaje
                     dir_destino = os.path.join(
                         path_dir,
-                        f"montaje_{numero_montaje:04d}.png"
+                        f"montaje_{numero_montaje:04d}.png",
                     )
                     fig.savefig(dir_destino, dpi=150, bbox_inches="tight")
                     plt.close(fig)
@@ -119,11 +126,11 @@ def generar_mapa_calor():
 
 
 if __name__ == "__main__":
-    #Generar el mapa de calor también nos devuelve la información frame a frame de las presiones en la plataforma que nos permitirá 
-    #determinar el indice de simetría frecuencia y el impulso dinámico
-    generar_mapa_calor()
+    #Como dato extra se genera el mapa de calor de la baropodometría dinámica para
+    #visualizarla frame a frame
+    frames_placa = generar_funcion_P()
 
-   
+    print(f"Para el frame 10 el mapa de presiones será: f{frames_placa[9]}")
 
 
 

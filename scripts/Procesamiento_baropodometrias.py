@@ -3,23 +3,59 @@ import numpy as np
 import os
 
 
-"Se extraen trayectoria de COP para x e y, COP_y vs COP_x y fuerza-t"
+
 MAX_PLOT_FRAMES = 5000
 
 
-def read_data(graficar=False):
+def read_data(verificar=True,graficar=False):
+
+        #Verificar se introduce para ver si ya existen las carpetas, txt y png, para no leer todos los txt
+
+        """
+        Se extraen trayectoria de COP para x e y, COP_y vs COP_x y fuerza-t
+        """
+
+        RAIZ = "Baropodometrias Procesadas"
+
+
+        if verificar:
+
+
+            for dirpath, dirnames, filenames in os.walk(RAIZ):
+                for filename in filenames:
+                    if filename.endswith(".txt"):
+                        ruta_txt = os.path.join(dirpath, filename)
+
+                        if os.path.exists(ruta_txt):
+                            # Leer solo si existe
+                            with open(ruta_txt, "r", newline="") as f:
+                                contenido = f.read()
+                        else:
+
+                            print("No existe:", ruta_txt)
+
+                            read_data(verificar=False)
+
+            return print("Ya existen las carpetas con las muestras de cada paciente")
+                
 
         todos_cop_x = {}
         todos_cop_y = {}
+        todos_cop_x_r = {}
+        todos_cop_x_l = {}
         PATH = f"data/muestras/The nature of functional variability in plantar pressure during a range of controlled walking speeds"
 
         for archivo in os.listdir(path=PATH):
 
+            
             if archivo.endswith(".txt"):
 
                 NEW_PATH = os.path.join(PATH,archivo)
 
+                num_paciente = archivo.split("_")[0][-1]
 
+                num_muestra = archivo.split(".")[0][-1]
+                
                 data = []
                 time_r = [] #tiempos de apoyo de la pierna derecha
                 time_f = [] #tiempos de apoyo de la pierna izquierda
@@ -28,8 +64,11 @@ def read_data(graficar=False):
 
                 FP_frames_l = [] #Fuerzas puntuales aplicada en el centro de presión del pie izquierdo por frame
 
-
                 COP_frames_x = []
+
+                COP_frames_x_l = []
+
+                COP_frames_x_r = []
 
                 COP_frames_y = []
                 frames = []
@@ -64,8 +103,21 @@ def read_data(graficar=False):
                                 FP_frames_r.append(fuerza_derecha)
 
                                 # NaN corta la línea cuando no existe COP válido.
-                                COP_frames_x.append(cop_x if np.isfinite(cop_x) else np.nan)
+
+                                if fuerza_derecha and not fuerza_izquierda:
+
+                                    COP_frames_x_r.append(cop_x if np.isfinite(cop_x) else np.nan)
+                                    COP_frames_x_l.append(0)
+
+
+                                if fuerza_izquierda and not fuerza_derecha:
+                                    COP_frames_x_l.append(cop_x if np.isfinite(cop_x) else np.nan)
+                                    COP_frames_x_r.append(0)
+
+                                COP_frames_x.append(cop_x if np.isfinite(cop_y) else np.nan)
                                 COP_frames_y.append(cop_y if np.isfinite(cop_y) else np.nan)
+
+
 
                                 # El apoyo comienza cuando la fuerza pasa de cero a positiva.
                                 if fuerza_derecha > 0 and not apoyo_derecho:
@@ -100,16 +152,21 @@ def read_data(graficar=False):
 
                     PATH_BARO_PROCESADA = "Baropodometrias procesadas/"
 
-                    nombre_base = os.path.splitext(archivo)[0]
-                    dir_destino = os.path.join(PATH_BARO_PROCESADA, nombre_base)
+                    
 
-                    # Guardamos los valores de las trayectorias de COP al diccionario
+
+                    # Guardamos los valores de las trayectorias de COP en diccionarios
+
                     todos_cop_x[archivo] = COP_frames_x
                     todos_cop_y[archivo] = COP_frames_y
+                    todos_cop_x_r[archivo] = COP_frames_x_r
+                    todos_cop_x_l[archivo] = COP_frames_x_l
 
-                    os.makedirs(dir_destino, exist_ok=True)
 
-                    archivo_resumen = os.path.join(dir_destino, f"resumen_{nombre_base}.txt")
+                    carpeta_muestra = os.path.join(PATH_BARO_PROCESADA, f"Subject{num_paciente}",f"Muestra{num_muestra}")
+                    os.makedirs(carpeta_muestra,exist_ok=True)
+
+                    archivo_resumen = os.path.join(carpeta_muestra, f"resumen_{num_muestra}.txt")
                     with open(archivo_resumen, "w", newline="", encoding="utf-8") as archive:
                         # "Tiempo de apoyo medio pie izquierdo y derecho"
                         t_a_m_r = np.mean(time_r)
@@ -145,7 +202,7 @@ def read_data(graficar=False):
 
                         ax_cop.set_title(f"Trayectoria COP paciente registro {archivo}")
 
-                        fig_cop.savefig(dir_destino +f"/COP_trayectoria_registro_{archivo}.png")
+                        fig_cop.savefig(carpeta_muestra +f"/COP_trayectoria_registro_{archivo}.png")
 
                         plt.close(fig_cop)
 
@@ -164,7 +221,7 @@ def read_data(graficar=False):
                         ax_cop_y.grid(True)
 
                         plt.tight_layout()
-                        fig_cop_tiempo.savefig(os.path.join(dir_destino, f"COP_vs_tiempo_registro_{archivo}.png"))
+                        fig_cop_tiempo.savefig(os.path.join(carpeta_muestra, f"COP_vs_tiempo_registro_{archivo}.png"))
                         plt.close(fig_cop_tiempo)
 
                         #Genero los gráficos Fuerza puntual - tiempo en cada pie 
@@ -192,7 +249,7 @@ def read_data(graficar=False):
 
                         plt.tight_layout()
 
-                        plt.savefig(os.path.join(dir_destino,f"Fuerzas_registro_{archivo}.png"))
+                        plt.savefig(os.path.join(carpeta_muestra,f"Fuerzas_registro_{archivo}.png"))
 
                         print("Registro baropodométrico procesado y guardado correctamente")
 
@@ -202,10 +259,9 @@ def read_data(graficar=False):
                     print("Error: Archivo sin encontrar")
 
 
-        return todos_cop_x,todos_cop_y #devuelve la trayectoria total del centro de presiones
+        return todos_cop_x,todos_cop_y,todos_cop_x_r,todos_cop_x_l #devuelve la trayectoria total del centro de presiones
 
 if __name__ == "__main__":
 
-    read_data(graficar=True)
-    
-
+    read_data(verificar=False)
+  

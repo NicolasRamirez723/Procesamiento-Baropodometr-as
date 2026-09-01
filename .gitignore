@@ -1,5 +1,17 @@
-data/
-Baropodometrias procesadas/
+# Solo subir la carpeta raiz de Baropodometrias procesadas, sin el contenido interno
+Baropodometrias procesadas/*
+!Baropodometrias procesadas/.gitkeep
+
+# Mantener la estructura de data/muestras/The nature..., pero no subir los archivos reales
+data/*
+!data/.gitkeep
+!data/muestras/
+data/muestras/*
+!data/muestras/.gitkeep
+!data/muestras/The\ nature\ of\ functional\ variability\ in\ plantar\ pressure\ during\ a\ range\ of\ controlled\ walking\ speeds/
+data/muestras/The\ nature\ of\ functional\ variability\ in\ plantar\ pressure\ during\ a\ range\ of\ controlled\ walking\ speeds/*
+!data/muestras/The\ nature\ of\ functional\ variability\ in\ plantar\ pressure\ during\ a\ range\ of\ controlled\ walking\ speeds/.gitkeep
+
 .venv/
 __pycache__/
 *.py[cod]

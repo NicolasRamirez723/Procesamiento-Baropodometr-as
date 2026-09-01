@@ -2,10 +2,15 @@
 Baropodometrias procesadas/*
 !Baropodometrias procesadas/.gitkeep
 
-# Mantener la estructura de data/muestras/The nature..., pero no subir los archivos reales
+# Mantener la estructura de datos, sin subir los archivos reales del dataset
+# 1) Ignorar todo dentro de data
+# 2) Permitir el archivo .gitkeep para que la carpeta exista en Git
+# 3) Mantener la estructura de carpetas aunque los archivos reales queden ignorados
+
 data/*
 !data/.gitkeep
 !data/muestras/
+
 data/muestras/*
 !data/muestras/.gitkeep
 !data/muestras/The\ nature\ of\ functional\ variability\ in\ plantar\ pressure\ during\ a\ range\ of\ controlled\ walking\ speeds/

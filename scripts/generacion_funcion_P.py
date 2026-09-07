@@ -14,69 +14,141 @@ mapa_presiones = []
 linea_inicio_datos = 30000
 filas_por_mapa = 56
 
-
+import numpy as np
+from scipy.ndimage import label, center_of_mass
 
 def mapear_pies(frame):
-
     """
-    La función recibe un frame completo de la placa de presión y mapea la presión no nula 
-    registrada, se asume que si la posición está por encima de y=28, entonces corresponde al pie 
-    derecho y si está por debajo al pie izquierdo, esto ya que la persona está caminando de izquierda a derecha
+    Función optimizada con SciPy.
+    Recibe un frame de la placa de presión, identifica las manchas de apoyo,
+    calcula su centro de masa y clasifica las coordenadas en pie derecho (y > 28)
+    o izquierdo (y <= 28).
     """
-
     frame = np.asarray(frame)
-
-    """
-    La lógica es esta, se recorre el frame y cuando se detecta una posición no nula se empieza a realizar un
-    mapeo alrededor de esta, es decir, si es la posición i,j, analizaremos un cuadrado alrededor de este valor
-    y guardaremos la posición, si volvemos a encontrar un valor no nulo repetimos el proceso hasta que se mapea por completo
-    la presión plantar del pie correspondiente
-    """
-    filas_tot, col_tot = frame.shape
-    visitados = set()
     pie_izquierdo, pie_derecho = [], []
+    
+    mascara = frame > 0
+    
+    
+    if not np.any(mascara):
+        return pie_derecho, pie_izquierdo
 
-    for num_fila in range(filas_tot):
-        for num_columna in range(col_tot):
-            
-            
-            if frame[num_fila, num_columna] > 0 and (num_fila, num_columna) not in visitados:
-                
-                
-                datos_pie_actual = []
-                
-                pendientes = deque([(num_fila,num_columna)])
-                visitados.add((num_fila, num_columna))
+    
+    matriz_etiquetada, num_grupos = label(mascara)
+    
+    
+    etiquetas = np.arange(1, num_grupos + 1)
+    centros = center_of_mass(frame, matriz_etiquetada, etiquetas)
+    
+    
+    if num_grupos == 1:
+        centros = [centros]
 
-                while pendientes:
-                    f, c = pendientes.popleft()
-                    valor = frame[f, c]
-                    datos_pie_actual.append((valor, f, c))
-                    
-                    vecinos = [(f, c+1), (f, c-1), (f+1, c), (f-1, c)]
-                    for vec_f, vec_c in vecinos:
-                        if 0 <= vec_f < filas_tot and 0 <= vec_c < col_tot:
-                            if (vec_f, vec_c) not in visitados:
-                                if frame[vec_f, vec_c] > 0:
-                                    visitados.add((vec_f, vec_c))
-                                    pendientes.append((vec_f, vec_c))
+   
+    for i, centro in enumerate(centros):
+        id_grupo = i + 1
+        centro = np.asarray(centro).ravel()
+        y_CM = float(centro[0])
+        
+       
+        filas_grupo, cols_grupo = np.where(matriz_etiquetada == id_grupo)
+        
+        valores_grupo = frame[filas_grupo, cols_grupo]
+        
 
-                
-                y_CM = np.mean([fila for valor, fila, col in datos_pie_actual])
-
-                # Clasificación
-                # Se acumula cada componente conectado en su pie correspondiente;
-                # no se sobrescribe el pie completo en cada región encontrada.
-                if y_CM > 28:
-                    pie_derecho.extend(datos_pie_actual)
-                else:
-                    pie_izquierdo.extend(datos_pie_actual)
+        datos_grupo = list(zip(valores_grupo, filas_grupo, cols_grupo))
+        
+        if y_CM > 28:
+            pie_derecho.extend(datos_grupo)
+        else:
+            pie_izquierdo.extend(datos_grupo)
 
     return pie_derecho, pie_izquierdo
+"""
+def prueba_1000_frames(max_frames=1000):
+    Prueba la segmentación de pies en una cantidad acotada de frames.
+    PATH = "data/muestras/The nature of functional variability in plantar pressure during a range of controlled walking speeds"
 
+    frames_analizados = 0
+    total_derecho = 0
+    total_izquierdo = 0
+    total_ambos = 0
+    total_vacios = 0
 
+    for archivo in sorted(os.listdir(path=PATH)):
+        if not archivo.endswith(".txt"):
+            continue
 
+        NEW_PATH = os.path.join(PATH, archivo)
 
+        with open(NEW_PATH, "r", encoding="utf-8") as archive:
+            for line in islice(archive, linea_inicio_datos, None):
+                valores = line.strip().split()
+
+                if len(valores) != 129 or not valores[0].startswith("y"):
+                    continue
+
+                try:
+                    primera_fila = [float(valor) for valor in valores[1:]]
+                except ValueError:
+                    continue
+
+                mapa_presiones = [primera_fila]
+
+                for fila in islice(archive, filas_por_mapa - 1):
+                    valores = fila.strip().split()
+
+                    if len(valores) != 129 or not valores[0].startswith("y"):
+                        break
+
+                    try:
+                        mapa_presiones.append([float(valor) for valor in valores[1:]])
+                    except ValueError:
+                        break
+
+                pie_derecho, pie_izquierdo = mapear_pies(mapa_presiones)
+
+                y_cm_d = np.mean([fila for _, fila, _ in pie_derecho]) if pie_derecho else None
+                y_cm_i = np.mean([fila for _, fila, _ in pie_izquierdo]) if pie_izquierdo else None
+
+                print(
+                    f"Frame {frames_analizados}: "
+                    f"Ycm_d={y_cm_d} | celdas_d={len(pie_derecho)} | "
+                    f"Ycm_i={y_cm_i} | celdas_i={len(pie_izquierdo)}"
+                )
+
+                if pie_derecho and not pie_izquierdo:
+                    total_derecho += 1
+                elif pie_izquierdo and not pie_derecho:
+                    total_izquierdo += 1
+                elif pie_derecho and pie_izquierdo:
+                    total_ambos += 1
+                else:
+                    total_vacios += 1
+
+                frames_analizados += 1
+
+                if frames_analizados >= max_frames:
+                    break
+
+            if frames_analizados >= max_frames:
+                break
+
+    print(f"Frames analizados: {frames_analizados}")
+    print(f"Solo derecho: {total_derecho}")
+    print(f"Solo izquierdo: {total_izquierdo}")
+    print(f"Ambos: {total_ambos}")
+    print(f"Vacios: {total_vacios}")
+
+    return {
+        "frames_analizados": frames_analizados,
+        "solo_derecho": total_derecho,
+        "solo_izquierdo": total_izquierdo,
+        "ambos": total_ambos,
+        "vacios": total_vacios,
+    }
+
+"""
 def generar_funcion_P():
     time = 0
     # A partir de los registros baropodométricos se reconstruye una función de la presión
@@ -135,71 +207,12 @@ def generar_funcion_P():
     return frames_pie_derecho,frames_pie_izquierdo
 
 
-"""                      
-def validar_primeros_frames(n_frames=1000):
-    PATH = "data/muestras/The nature of functional variability in plantar pressure during a range of controlled walking speeds"
-    time = 0
-
-    for archivo in sorted(os.listdir(path=PATH)):
-        if not archivo.endswith(".txt"):
-            continue
-
-        NEW_PATH = os.path.join(PATH, archivo)
-
-        with open(NEW_PATH, "r", encoding="utf-8") as archive:
-            frames_validados = 0
-
-            for line in islice(archive, linea_inicio_datos, None):
-                valores = line.strip().split()
-
-                if len(valores) != 129 or not valores[0].startswith("y"):
-                    continue
-
-                try:
-                    primera_fila = [float(valor) for valor in valores[1:]]
-                except ValueError:
-                    continue
-
-                mapa_presiones = [primera_fila]
-
-                for fila in islice(archive, filas_por_mapa - 1):
-                    valores = fila.strip().split()
-
-                    if len(valores) != 129 or not valores[0].startswith("y"):
-                        break
-
-                    try:
-                        mapa_presiones.append([float(valor) for valor in valores[1:]])
-                    except ValueError:
-                        break
-
-                pie_derecho, pie_izquierdo = mapear_pies(mapa_presiones)
-
-                y_cm_d = np.mean([f for _, f, _ in pie_derecho]) if pie_derecho else None
-                y_cm_i = np.mean([f for _, f, _ in pie_izquierdo]) if pie_izquierdo else None
-
-                print(
-                    f"Frame {frames_validados}: t={time} ms | "
-                    f"derecho={len(pie_derecho)} celdas | "
-                    f"izquierdo={len(pie_izquierdo)} celdas | "
-                    f"yCM_d={y_cm_d} | yCM_i={y_cm_i}"
-                )
-
-                frames_validados += 1
-                time += 10
-
-                if frames_validados >= n_frames:
-                    return
-
-"""
-
 if __name__ == "__main__":
-    # Validación rápida de los primeros frames antes de correr todo el dataset.
-    #validar_primeros_frames(1000)
+    # Validación rápida de una ventana sin recorrer todo el dataset.
+    #prueba_1000_frames(1000)
 
-    
+    # Si querés correr la versión completa, descomentá estas líneas:
     frames_placa = generar_funcion_P()
-    
-
+    # print(f"Para el frame 10 el mapa de presiones será: f{frames_placa[9]}")
 
 

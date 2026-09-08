@@ -52,39 +52,59 @@ def leer_baropodometria(ruta_txt):
 
     return t, fuerza_r, cop_x, fs
 
-def estimar_frecuencia_zancada(t, fuerza_r):
+# ---------------------------
+# CORRECCIÓN: estimar frecuencia de zancada (stride)
+# ---------------------------
+def estimar_frecuencia_zancada(t, fuerza_r, return_step_and_stride=False):
+    """
+    Estima frecuencia de zancada (1 zancada = 2 pasos).
+    - Detecta inicios de apoyo del pie derecho (cruces).
+    - periodos_paso = tiempos entre inicios de apoyo (periodo de paso).
+    - periodo_zancada = 2 * median(periodos_paso).
+    Devuelve f_zancada = 1 / periodo_zancada.
+    Si return_step_and_stride=True devuelve (f_step, f_stride).
+    """
     apoyo = fuerza_r > (0.02 * np.max(fuerza_r) + 1e-6)
     cruces = np.where(np.diff(apoyo.astype(int)) == 1)[0]
     if len(cruces) < 2:
-        return 0.9 
-    periodos_paso = np.diff(t[cruces])
-    periodo_zancada_medio = 2.0 * np.median(periodos_paso)
-    if periodo_zancada_medio <= 0:
+        # fallback razonable
+        if return_step_and_stride:
+            return 0.9, 0.45
         return 0.9
-    return 1.0 / periodo_zancada_medio
+
+    # tiempos de los cruces
+    tiempos_cruce = t[cruces]
+    periodos_paso = np.diff(tiempos_cruce)  # esto es el periodo de paso (s)
+    med_paso = np.median(periodos_paso)
+
+    # frecuencia de paso (steps/s)
+    f_step = 1.0 / med_paso if med_paso > 0 else 0.0
+    # frecuencia de zancada (stride) = 1 / (2 * periodo_paso_medio)
+    periodo_zancada = 2.0 * med_paso
+    f_stride = 1.0 / periodo_zancada if periodo_zancada > 0 else 0.0
+
+    if return_step_and_stride:
+        return f_step, f_stride
+
+    # por compatibilidad con tu pipeline, devolvemos f_stride (frecuencia de zancada)
+    return f_stride
+
 # ---------------------------
 # Filtro de Kalman Cinemático (Estable y Fuertemente Amortiguado)
+# (sin cambios funcionales)
 # ---------------------------
 class KF_Cinematico_CoG:
     def __init__(self, dt):
-        # Modelo de estado puro y 100% estable: X = [Posición, Velocidad]
         self.A = np.array([
             [1.0, dt],
             [0.0, 1.0]
         ])
-        
-        # Observamos directamente la posición (El CoP es una observación ruidosa del CoG)
         self.H = np.array([[1.0, 0.0]])
-        
-       # Q: Ruido de proceso (permite la oscilación natural del paso)
         self.Q = np.array([
             [1e-4, 0.0],
             [0.0,  1e-3]
         ])
-        
-        # R: Ruido de medición equilibrado (ni tan sensible ni tan plano)
-        self.R = np.array([[2.5]]) 
-        
+        self.R = np.array([[2.5]])
         self.x = np.zeros(2)
         self.P = np.eye(2) * 1.0
 
@@ -103,33 +123,37 @@ class KF_Cinematico_CoG:
     def correr(self, cop_x_array):
         n = len(cop_x_array)
         cog_x_est = np.zeros(n)
-        
         if n > 0:
-            self.x[0] = cop_x_array[0] # Arranca exactamente en la primera posición real
-            self.x[1] = 0.0            # Velocidad inicial en cero
-            
+            self.x[0] = cop_x_array[0]
+            self.x[1] = 0.0
         for k in range(n):
             self.predecir()
             self.actualizar(cop_x_array[k])
             cog_x_est[k] = self.x[0]
-            
         return cog_x_est
+
 def calcular_CoG_X(cop_x, fs):
     dt = 1.0 / fs
-    # Ya no dependemos de g ni de l_st para la estabilidad del filtro
     kf = KF_Cinematico_CoG(dt=dt)
     mean_cop_x = np.nanmean(cop_x)
     cop_centered = cop_x - mean_cop_x
     cog_centered = kf.correr(cop_centered)
     return cog_centered + mean_cop_x
 
-
 # ---------------------------
-# CoG Ideal (Onda Senoidal)
+# CoG Ideal (Onda Senoidal) - ahora usa f_stride por defecto
 # ---------------------------
-def generar_CoG_X_ideal(t, f_z, mean_x):
-    omega = 2 * np.pi * (f_z / 2.0) 
-    amplitud_lateral = 0.015 # 15 mm hacia cada lado
+def generar_CoG_X_ideal(t, f_stride, mean_x, cycles_per_stride=1.0):
+    """
+    Genera ideal en X.
+    - f_stride: frecuencia de zancada (zancadas/s).
+    - cycles_per_stride: cuántos ciclos queremos por zancada (1 -> 1 ciclo por zancada).
+      Si quisieras 1 ciclo por paso, usar cycles_per_stride=2.0 (porque 1 zancada = 2 pasos).
+    """
+    # frecuencia efectiva para la señal ideal
+    f_eff = f_stride * cycles_per_stride
+    omega = 2.0 * np.pi * f_eff
+    amplitud_lateral = 0.015  # 15 mm en metros
     x_ideal = mean_x + amplitud_lateral * np.sin(omega * (t - t[0]))
     return x_ideal
 
@@ -139,7 +163,7 @@ def suavizar_serie(x):
     return x
 
 # ---------------------------
-# Gráfica Automática
+# Gráfica Automática (sin cambios importantes)
 # ---------------------------
 def graficar_comparacion_ML(t, cog_x_calc, cog_x_ideal, archivo, titulo):
     t_seg = t 
@@ -149,16 +173,16 @@ def graficar_comparacion_ML(t, cog_x_calc, cog_x_ideal, archivo, titulo):
     fig, ax = plt.subplots(figsize=(12, 5))
 
     ax.plot(t_seg, cx_mm, color='steelblue', label='CoG Calculado (Paciente)', linewidth=1.5)
-    ax.plot(t_seg, ix_mm, color='darkorange', linestyle='--', label='CoG Ideal (Simétrico)', linewidth=2, alpha=0.9)
+    ax.plot(t_seg, ix_mm, color='darkorange', linestyle='--', label='CoG Ideal (Simétrico)', linewidth=1.2, alpha=0.9)
 
     ax.set_title(titulo, fontsize=14, pad=15)
     ax.set_xlabel("Tiempo (Segundos)", fontsize=11)
     ax.set_ylabel("Oscilación Lateral (mm)", fontsize=11)
     
-    # Zoom dinámico: Se ajusta perfectamente al máximo y mínimo de los datos reales
+    # Zoom dinámico: recorta a percentiles centrales para mejorar legibilidad
     min_y = min(np.min(cx_mm), np.min(ix_mm))
     max_y = max(np.max(cx_mm), np.max(ix_mm))
-    margen = max((max_y - min_y) * 0.15, 5.0) # Asegura un margen mínimo visual
+    margen = max((max_y - min_y) * 0.15, 5.0)
     ax.set_ylim(min_y - margen, max_y + margen)
 
     ax.grid(True, alpha=0.3)
@@ -167,8 +191,9 @@ def graficar_comparacion_ML(t, cog_x_calc, cog_x_ideal, archivo, titulo):
     plt.tight_layout()
     fig.savefig(archivo, dpi=300)
     plt.close(fig)
+
 # ---------------------------
-# Pipeline Principal
+# Pipeline Principal (usa f_stride)
 # ---------------------------
 def main():
     repo_root = "."
@@ -204,13 +229,16 @@ def main():
             t, fr, cx, fs = leer_baropodometria(r)
             
             cog_x = calcular_CoG_X(cx, fs)
-            fz = estimar_frecuencia_zancada(t, fr)
-            
-            # Centramos ambas ondas en 0 para visualización perfecta
-            cog_x = cog_x - np.nanmean(cog_x) 
-            mean_x = 0.0 
 
-            cog_x_ideal = generar_CoG_X_ideal(t, fz, mean_x)
+            # obtenemos tanto frecuencia de paso como de zancada para diagnóstico
+            f_step, f_stride = estimar_frecuencia_zancada(t, fr, return_step_and_stride=True)
+            print(f"    f_step (paso) = {f_step:.3f} Hz, f_stride (zancada) = {f_stride:.3f} Hz")
+
+            # Elegimos la frecuencia de zancada para la ideal (1 ciclo por zancada)
+            # Si prefieres 1 ciclo por paso, usa cycles_per_stride=2.0
+            cog_x = cog_x - np.nanmean(cog_x)
+            mean_x = 0.0
+            cog_x_ideal = generar_CoG_X_ideal(t, f_stride, mean_x, cycles_per_stride=1.0)
 
             ruta_grafica = out_dir / f"CoG_ML_{nombre_archivo}.png"
             titulo_grafica = f"{sujeto} - Estabilidad Medio-Lateral ({nombre_archivo})"

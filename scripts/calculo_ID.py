@@ -8,7 +8,7 @@ Datos plataforma:
 56 lineas
 Ancho de celda = 8.46mm
 Largo de celda = 8.46mm
-
+presion: N/cm2
 """
 mapa_presiones = []
 linea_inicio_datos = 30000
@@ -81,6 +81,13 @@ def prueba_1000_frames(max_frames=1000):
 
         NEW_PATH = os.path.join(PATH, archivo)
 
+        impulsos_derecho = []
+        impulsos_izquierdo = []
+        impulso_derecho_actual = 0.0
+        impulso_izquierdo_actual = 0.0
+        apoyo_derecho = False
+        apoyo_izquierdo = False
+
         with open(NEW_PATH, "r", encoding="utf-8") as archive:
             for line in islice(archive, linea_inicio_datos, None):
                 valores = line.strip().split()
@@ -149,14 +156,21 @@ def prueba_1000_frames(max_frames=1000):
     }
 
 """
-def generar_funcion_P():
-    time = 0
-    # A partir de los registros baropodométricos se reconstruye una función de la presión
+
+
+def CALCULO_ID():
+
+    """
+    Se calcula el impuslo dinámico promedio asociado a cada pie durante cada muestra
+    """
+
+    # A partir de los registros baropodométricos se reconstruye una función de la presión para cada pie
     # en función de x, y y t.
 
 
-    frames_pie_derecho = []
-    frames_pie_izquierdo = []
+    # Presión en N/cm²; las celdas miden 0.846 cm por lado.
+    area_celda = 0.846 ** 2
+    dt = 0.010
 
 
 
@@ -168,6 +182,16 @@ def generar_funcion_P():
             continue
 
         NEW_PATH = os.path.join(PATH, archivo)
+        num_paciente = archivo.split("_")[0][-1]
+        
+        num_muestra = archivo.split(".")[0][-1]
+                        
+        impulsos_derecho = []
+        impulsos_izquierdo = []
+        impulso_derecho_actual = 0.0
+        impulso_izquierdo_actual = 0.0
+        apoyo_derecho = False
+        apoyo_izquierdo = False
 
         with open(NEW_PATH, "r", encoding="utf-8") as archive:
 
@@ -197,22 +221,70 @@ def generar_funcion_P():
 
                 pie_derecho,pie_izquierdo = mapear_pies(mapa_presiones)
 
-                print(f"Leyendo frame t={time} ms | archivo={archivo}")
-                frames_pie_derecho.append((pie_derecho,time))
+                presion_derecha = sum(
+                    presion for presion, _, _ in pie_derecho
+                )
+                presion_izquierda = sum(
+                    presion for presion, _, _ in pie_izquierdo
+                )
 
-                frames_pie_izquierdo.append((pie_izquierdo,time))
+                fuerza_derecha = presion_derecha * area_celda
+                fuerza_izquierda = presion_izquierda * area_celda
 
-                time += 10
+                if presion_derecha > 0:
+                    apoyo_derecho = True
+                    impulso_derecho_actual += fuerza_derecha * dt
+                elif apoyo_derecho:
+                    impulsos_derecho.append(impulso_derecho_actual)
+                    impulso_derecho_actual = 0.0
+                    apoyo_derecho = False
 
-    return frames_pie_derecho,frames_pie_izquierdo
+                if presion_izquierda > 0:
+                    apoyo_izquierdo = True
+                    impulso_izquierdo_actual += fuerza_izquierda * dt
+                elif apoyo_izquierdo:
+                    impulsos_izquierdo.append(impulso_izquierdo_actual)
+                    impulso_izquierdo_actual = 0.0
+                    apoyo_izquierdo = False
 
+                
+
+        if apoyo_derecho:
+            impulsos_derecho.append(impulso_derecho_actual)
+        if apoyo_izquierdo:
+            impulsos_izquierdo.append(impulso_izquierdo_actual)
+
+        promedio_derecho = (
+            np.mean(impulsos_derecho) if impulsos_derecho else 0.0
+        )
+        promedio_izquierdo = (
+            np.mean(impulsos_izquierdo) if impulsos_izquierdo else 0.0
+        )
+
+        print(
+            f"{archivo}: "
+            f"pisadas derecha={len(impulsos_derecho)}, "
+            f"promedio impulso derecho={promedio_derecho:.4f} N·s | "
+            f"pisadas izquierda={len(impulsos_izquierdo)}, "
+            f"promedio impulso izquierdo={promedio_izquierdo:.4f} N·s"
+        )
+
+        PATH_ESCRITURA = os.path.join("Baropodometrias Procesadas",f"Subject{num_paciente}",f"Muestra{num_muestra}",f"resumen_{num_muestra}.txt")
+
+        with open(PATH_ESCRITURA,"a",newline="") as archive:
+
+            archive.write(f"{archivo}: "
+                        f"pisadas derecha={len(impulsos_derecho)}, "
+                        f"promedio impulso derecho={promedio_derecho:.4f} N·s | "
+                        f"pisadas izquierda={len(impulsos_izquierdo)}, "
+                        f"promedio impulso izquierdo={promedio_izquierdo:.4f} N·s\n")
 
 if __name__ == "__main__":
     # Validación rápida de una ventana sin recorrer todo el dataset.
     #prueba_1000_frames(1000)
 
     # Si querés correr la versión completa, descomentá estas líneas:
-    frames_placa = generar_funcion_P()
+    frames_placa = CALCULO_ID()
     # print(f"Para el frame 10 el mapa de presiones será: f{frames_placa[9]}")
 
 

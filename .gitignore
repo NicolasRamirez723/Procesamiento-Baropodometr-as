@@ -1,6 +1,5 @@
 # Solo subir la carpeta raiz de Baropodometrias procesadas, sin el contenido interno
-Baropodometrias procesadas/*
-!Baropodometrias procesadas/.gitkeep
+
 
 # Mantener la estructura de datos, sin subir los archivos reales del dataset
 # 1) Ignorar todo dentro de data

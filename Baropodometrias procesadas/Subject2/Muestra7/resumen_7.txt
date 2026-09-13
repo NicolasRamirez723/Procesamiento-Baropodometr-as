@@ -1,0 +1,6 @@
+Registro Subject2_1p7.txt. 
+Tiempo de apoyo medio pie izquierdo: 595.4545454545455, fuerza puntual media pie izquierdo 245.18501999999998
+Tiempo de apoyo medio pie derecho: 591.5960912052117, fuerza puntual media pie derecho 243.60382Subject2_1p7.txt: umbral y=29.217, pisadas derecha=407, promedio impulso derecho=180.0203 N·s | pisadas izquierda=412, promedio impulso izquierdo=178.0859 N·s
+
+ISF = 0.0
+Subject2_1p7.txt: umbral y=29.217, pisadas derecha=407, promedio impulso derecho=180.0203 N·s | pisadas izquierda=412, promedio impulso izquierdo=178.0859 N·s

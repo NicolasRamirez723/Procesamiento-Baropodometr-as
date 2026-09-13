@@ -106,8 +106,16 @@ def CALCULO_ID():
             continue
 
         NEW_PATH = os.path.join(PATH, archivo)
-        num_paciente = archivo.split("_")[0][-1]
+        try:
 
+            num_paciente = float(archivo.split("_")[0][-2:])
+
+            num_paciente = archivo.split("_")[0][-2:]
+
+        except ValueError:
+
+            num_paciente  = archivo.split("_")[0][-1:]
+        
         num_muestra = archivo.split(".")[0][-1]
 
         frames_procesados = []

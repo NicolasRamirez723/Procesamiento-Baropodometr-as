@@ -8,7 +8,7 @@ import os
 from Procesamiento_baropodometrias import read_data
 from scipy.signal import welch
 
-TRAYECTORIA_COP_X, TRAYECTORIA_COP_Y,TRAYECTORIA_COP_X_R,TRAYECTORIA_COP_X_L= read_data(verificar=False)
+TRAYECTORIA_COP_X, TRAYECTORIA_COP_Y,TRAYECTORIA_COP_X_R,TRAYECTORIA_COP_X_L= read_data(verificar=False,graficar=True)
 
 def calcular_f95(frecuencias,psd):
 
@@ -85,10 +85,17 @@ def FFT_COP():
         if archivo not in TRAYECTORIA_COP_Y:
             continue
 
+        try:
 
-        num_paciente = archivo.split("_")[0][-1]
-        
-        num_muestra = archivo.split(".")[0][-1] 
+            num_paciente = float(archivo.split("_")[0][-2:])
+
+            num_paciente = archivo.split("_")[0][-2:]
+
+        except ValueError:
+
+                    num_paciente  = archivo.split("_")[0][-1:]
+                    
+        num_muestra = archivo.split(".")[0][-1]        
 
         nombre_sin_ext = os.path.splitext(archivo)[0]
 

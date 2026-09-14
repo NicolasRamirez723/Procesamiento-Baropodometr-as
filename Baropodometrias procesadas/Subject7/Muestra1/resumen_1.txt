@@ -3,4 +3,3 @@ Tiempo de apoyo medio pie izquierdo: 699.2910447761194, fuerza puntual media pie
 Tiempo de apoyo medio pie derecho: 698.9219330855019, fuerza puntual media pie derecho 216.13982
 ISF = 4.444444444444445
 Subject7_1p1.txt: umbral y=29.259, pisadas derecha=272, promedio impulso derecho=242.3553 N·s | pisadas izquierda=288, promedio impulso izquierdo=225.1721 N·s
-Subject7_1p1.txt: umbral y=29.259, pisadas derecha=272, promedio impulso derecho=242.3553 N·s | pisadas izquierda=288, promedio impulso izquierdo=225.1721 N·s

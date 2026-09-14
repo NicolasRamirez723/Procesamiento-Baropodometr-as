@@ -56,7 +56,7 @@ def integrar_impulsos(fuerzas, tiempos, dt_default):
     impulsos = []
     impulso_actual = 0.0
     apoyo = False
-    fuerza_anterior = 0.0
+    fuerza_anterior = 0.0   
 
     for indice, fuerza in enumerate(fuerzas):
         if indice == 0 or tiempos[indice] is None or tiempos[indice - 1] is None:

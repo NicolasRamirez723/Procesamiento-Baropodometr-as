@@ -82,8 +82,8 @@ def read_data(verificar=True,graficar=False):
                 # Estado de cada pie: evita reiniciar el tiempo mientras el pie continúa apoyado.
                 apoyo_derecho = False
                 apoyo_izquierdo = False
-                tr_i = None
-                tl_i = None
+                tr_i = None|float
+                tl_i = None|float
                 try:
                     with open(NEW_PATH,"r") as file:
 

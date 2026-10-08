@@ -3,24 +3,24 @@ Resultados estadísticos por muestra
 Muestra 1 (n=15)
 Spearman asimetría de longitud (longitud mayor - menor) e ISF: 0.205785
 Spearman asimetría de longitud y diferencia absoluta de impulsos: -0.039286
-Regresión lineal (ISF = intercepto + pendiente * diferencia de impulsos): intercepto=1.755826, pendiente=0.064925, p-valor=0.520480, R²=0.032467
+Spearman ISF y diferencia absoluta de impulsos: n=15, rho=0.107612, p-permutación=0.701500, p-Holm=1.000000
 
 Muestra 3 (n=16)
 Spearman asimetría de longitud (longitud mayor - menor) e ISF: -0.392450
 Spearman asimetría de longitud y diferencia absoluta de impulsos: -0.052941
-Regresión lineal (ISF = intercepto + pendiente * diferencia de impulsos): intercepto=3.817045, pendiente=-0.039087, p-valor=0.740135, R²=0.008110
+Spearman ISF y diferencia absoluta de impulsos: n=16, rho=0.211198, p-permutación=0.429400, p-Holm=1.000000
 
 Muestra 5 (n=16)
 Spearman asimetría de longitud (longitud mayor - menor) e ISF: 0.454726
 Spearman asimetría de longitud y diferencia absoluta de impulsos: 0.320588
-Regresión lineal (ISF = intercepto + pendiente * diferencia de impulsos): intercepto=1.213833, pendiente=0.076981, p-valor=0.110191, R²=0.172015
+Spearman ISF y diferencia absoluta de impulsos: n=16, rho=0.476755, p-permutación=0.064400, p-Holm=0.322000
 
 Muestra 7 (n=16)
 Spearman asimetría de longitud (longitud mayor - menor) e ISF: 0.679630
 Spearman asimetría de longitud y diferencia absoluta de impulsos: 0.238235
-Regresión lineal (ISF = intercepto + pendiente * diferencia de impulsos): intercepto=3.150803, pendiente=-0.023345, p-valor=0.647721, R²=0.015336
+Spearman ISF y diferencia absoluta de impulsos: n=16, rho=0.133773, p-permutación=0.630800, p-Holm=1.000000
 
 Muestra 9 (n=16)
 Spearman asimetría de longitud (longitud mayor - menor) e ISF: 0.545466
 Spearman asimetría de longitud y diferencia absoluta de impulsos: 0.102941
-Regresión lineal (ISF = intercepto + pendiente * diferencia de impulsos): intercepto=2.286198, pendiente=0.052286, p-valor=0.561851, R²=0.024600
+Spearman ISF y diferencia absoluta de impulsos: n=16, rho=0.037338, p-permutación=0.889100, p-Holm=1.000000

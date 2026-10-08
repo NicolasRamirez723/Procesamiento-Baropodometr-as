@@ -1,13 +1,16 @@
 import csv
 import math
 import os
+import random
 import re
 
+import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
 
 PATH_CSV = os.path.join("Estadisticas", "estadisticas.csv")
 PATH_RESULTADOS = os.path.join("Estadisticas", "resultados_estadisticos.txt")
+PATH_GRAFICA_ISF_ID = os.path.join("Estadisticas", "mapa_dispersion_isf_id.png")
 LONGITUD_CORTA = "longitud estimada del miembro corto"
 LONGITUD_MAYOR = "longitud del miembro mayor"
 ISF = "ISF"
@@ -18,7 +21,7 @@ MUESTRA = "muestra"
 
 def estimar_longitud(t_mayor: float, t_menor: float, longitud_mayor: float) -> float:
     """Estima la longitud del miembro corto a partir de los tiempos de apoyo."""
-    return (t_menor / t_mayor) * longitud_mayor
+    return ((t_menor / t_mayor)**2) * longitud_mayor
 
 
 def leer_resumen(archivo: str) -> dict:
@@ -147,6 +150,53 @@ def diferencia_impulso(fila: dict) -> float:
     return abs(float(fila[IMPULSO_DERECHO]) - float(fila[IMPULSO_IZQUIERDO]))
 
 
+def graficar_isf_id(filas: list, path=PATH_GRAFICA_ISF_ID) -> str:
+    """Guarda la dispersión ISF-ID, diferenciando las muestras por color."""
+    grupos = {}
+    for fila in filas:
+        if not all(
+            _es_numero_valido(fila.get(columna))
+            for columna in (ISF, IMPULSO_DERECHO, IMPULSO_IZQUIERDO, MUESTRA)
+        ):
+            continue
+
+        muestra = int(fila[MUESTRA])
+        grupos.setdefault(muestra, ([], []))
+        valores_isf, valores_id = grupos[muestra]
+        valores_isf.append(float(fila[ISF]))
+        valores_id.append(diferencia_impulso(fila))
+
+    if not grupos:
+        raise ValueError("No hay datos numéricos válidos para graficar ISF e ID.")
+
+    figura, eje = plt.subplots(figsize=(9, 6))
+    for muestra, (valores_isf, valores_id) in sorted(grupos.items()):
+        eje.scatter(valores_isf, valores_id, label=f"Muestra {muestra}", alpha=0.75)
+
+    eje.set_title("Relación entre ISF e ID por muestra")
+    eje.set_xlabel("ISF")
+    eje.set_ylabel("ID: diferencia absoluta de impulsos (N·s)")
+    eje.grid(True, alpha=0.3)
+    eje.legend(title="Muestra")
+    figura.tight_layout()
+
+    directorio = os.path.dirname(path)
+    if directorio:
+        os.makedirs(directorio, exist_ok=True)
+    figura.savefig(path, dpi=150)
+    plt.close(figura)
+    return path
+
+
+def _es_numero_valido(valor) -> bool:
+    if valor is None or str(valor).strip() == "":
+        return False
+    try:
+        return math.isfinite(float(valor))
+    except (TypeError, ValueError):
+        return False
+
+
 def agrupar_por_muestra(filas: list) -> dict:
     """Agrupa los registros por número de muestra."""
     grupos = {}
@@ -249,32 +299,65 @@ def spearman_asimetria_impulso(filas: list) -> dict:
     }
 
 
-def _regresion_isf_impulso_muestra(filas: list) -> dict | None:
+def _spearman_isf_impulso_muestra(filas: list, semilla: int) -> dict | None:
     pares = [
-        (diferencia_impulso(fila), float(fila[ISF]))
+        (float(fila[ISF]), diferencia_impulso(fila))
         for fila in filas
-        if fila.get(ISF) and fila.get(IMPULSO_DERECHO) and fila.get(IMPULSO_IZQUIERDO)
+        if all(
+            _es_numero_valido(fila.get(columna))
+            for columna in (ISF, IMPULSO_DERECHO, IMPULSO_IZQUIERDO)
+        )
     ]
-    if len(pares) < 3:
+    if len(pares) < 2:
         return None
 
-    impulso = [par[0] for par in pares]
-    isf = [par[1] for par in pares]
-    modelo = sm.OLS(isf, sm.add_constant(impulso)).fit()
+    isf = [par[0] for par in pares]
+    impulso = [par[1] for par in pares]
+    rho = _correlacion_spearman(isf, impulso)
+    if rho is None:
+        return None
+
+    permutaciones = 9999
+    generador = random.Random(semilla)
+    extremos = 0
+    for _ in range(permutaciones):
+        rho_permutado = _correlacion_spearman(isf, generador.sample(impulso, len(impulso)))
+        if rho_permutado is not None and abs(rho_permutado) >= abs(rho) - 1e-12:
+            extremos += 1
+
     return {
-        "intercepto": float(modelo.params[0]),
-        "pendiente": float(modelo.params[1]),
-        "p_value": float(modelo.pvalues[1]),
-        "r_squared": float(modelo.rsquared),
+        "n": len(pares),
+        "rho": rho,
+        "p_value": (extremos + 1) / (permutaciones + 1),
     }
 
 
-def regresion_isf_impulso(filas: list) -> dict:
-    """Ajusta la regresión de ISF e impulso dinámico por muestra."""
-    return {
-        muestra: _regresion_isf_impulso_muestra(filas_muestra)
+def spearman_isf_impulso(filas: list) -> dict:
+    """Calcula Spearman ISF-impulso y p por permutación dentro de cada muestra."""
+    resultados = {
+        muestra: _spearman_isf_impulso_muestra(filas_muestra, 20261007 + muestra)
         for muestra, filas_muestra in agrupar_por_muestra(filas).items()
     }
+
+    ordenados = sorted(
+        (
+            (muestra, resultado["p_value"])
+            for muestra, resultado in resultados.items()
+            if resultado is not None
+        ),
+        key=lambda elemento: elemento[1],
+    )
+    cantidad_pruebas = len(ordenados)
+    p_ajustado_previo = 0.0
+    for posicion, (muestra, p_value) in enumerate(ordenados):
+        p_ajustado = min(1.0, (cantidad_pruebas - posicion) * p_value)
+        p_ajustado_previo = max(p_ajustado_previo, p_ajustado)
+        resultado = resultados[muestra]
+        if resultado is not None:
+            resultado["p_value_holm"] = p_ajustado_previo
+
+    return resultados
+
 
 
 def guardar_resultados(filas: list, path=PATH_RESULTADOS) -> str:
@@ -282,7 +365,7 @@ def guardar_resultados(filas: list, path=PATH_RESULTADOS) -> str:
     grupos = agrupar_por_muestra(filas)
     spearman_asimetria = spearman_asimetria_isf(filas)
     spearman_asimetria_impulso_resultados = spearman_asimetria_impulso(filas)
-    regresiones = regresion_isf_impulso(filas)
+    spearman_isf_impulso_resultados = spearman_isf_impulso(filas)
 
     def formato_numero(valor) -> str:
         return "No calculable" if valor is None else f"{valor:.6f}"
@@ -298,17 +381,15 @@ def guardar_resultados(filas: list, path=PATH_RESULTADOS) -> str:
             "Spearman asimetría de longitud y diferencia absoluta de impulsos: "
             f"{formato_numero(spearman_asimetria_impulso_resultados[muestra])}"
         )
-
-        regresion = regresiones[muestra]
-        if regresion is None:
-            lineas.append("Regresión lineal: No calculable")
+        spearman_relacion = spearman_isf_impulso_resultados[muestra]
+        if spearman_relacion is None:
+            lineas.append("Spearman ISF y diferencia absoluta de impulsos: No calculable")
         else:
             lineas.append(
-                "Regresión lineal (ISF = intercepto + pendiente * diferencia de impulsos): "
-                f"intercepto={formato_numero(regresion['intercepto'])}, "
-                f"pendiente={formato_numero(regresion['pendiente'])}, "
-                f"p-valor={formato_numero(regresion['p_value'])}, "
-                f"R²={formato_numero(regresion['r_squared'])}"
+                "Spearman ISF y diferencia absoluta de impulsos: "
+                f"n={spearman_relacion['n']}, rho={formato_numero(spearman_relacion['rho'])}, "
+                f"p-permutación={formato_numero(spearman_relacion['p_value'])}, "
+                f"p-Holm={formato_numero(spearman_relacion['p_value_holm'])}"
             )
         lineas.append("")
 
@@ -321,8 +402,10 @@ def guardar_resultados(filas: list, path=PATH_RESULTADOS) -> str:
 
 
 if __name__ == "__main__":
+    estadisticas()
     datos = leer_estadisticas()
     ruta_resultados = guardar_resultados(datos)
     print(f"Resultados guardados en: {ruta_resultados}")
-
+    ruta_grafica = graficar_isf_id(datos)
+    print(f"Mapa de dispersión ISF-ID guardado en: {ruta_grafica}")
 

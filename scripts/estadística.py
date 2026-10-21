@@ -9,6 +9,9 @@ import statsmodels.api as sm
 
 
 PATH_CSV = os.path.join("Estadisticas", "estadisticas.csv")
+PATH_CSV_RMSE = os.path.join(
+    "Baropodometrias procesadas", "Resultados_Estadisticos_RMSE.csv"
+)
 PATH_RESULTADOS = os.path.join("Estadisticas", "resultados_estadisticos.txt")
 PATH_GRAFICA_ISF_ID = os.path.join("Estadisticas", "mapa_dispersion_isf_id.png")
 LONGITUD_CORTA = "longitud estimada del miembro corto"
@@ -143,6 +146,27 @@ def leer_estadisticas(path=PATH_CSV) -> list:
     """Lee las filas del CSV de estadísticas."""
     with open(path, "r", newline="", encoding="utf-8") as archivo_csv:
         return list(csv.DictReader(archivo_csv))
+
+
+def leer_rmse(path=PATH_CSV_RMSE) -> list:
+    """Lee el RMSE y asigna cada registro a su sujeto y número de muestra."""
+    with open(path, "r", newline="", encoding="utf-8") as archivo_csv:
+        filas = list(csv.DictReader(archivo_csv))
+
+    for fila in filas:
+        coincidencia = re.fullmatch(r"Subject(\d+)_\d+p(\d+)", fila["Archivo"])
+        if coincidencia is None:
+            raise ValueError(f"Nombre de archivo RMSE no reconocido: {fila['Archivo']}")
+        if int(fila["Sujeto"].removeprefix("Subject")) != int(
+            coincidencia.group(1)
+        ):
+            raise ValueError(
+                f"El sujeto no coincide con el archivo: {fila['Archivo']}"
+            )
+        fila["num paciente"] = coincidencia.group(1)
+        fila[MUESTRA] = coincidencia.group(2)
+
+    return filas
 
 
 def diferencia_impulso(fila: dict) -> float:
@@ -299,21 +323,11 @@ def spearman_asimetria_impulso(filas: list) -> dict:
     }
 
 
-def _spearman_isf_impulso_muestra(filas: list, semilla: int) -> dict | None:
-    pares = [
-        (float(fila[ISF]), diferencia_impulso(fila))
-        for fila in filas
-        if all(
-            _es_numero_valido(fila.get(columna))
-            for columna in (ISF, IMPULSO_DERECHO, IMPULSO_IZQUIERDO)
-        )
-    ]
-    if len(pares) < 2:
+def _prueba_spearman_permutacion(x: list, y: list, semilla: int) -> dict | None:
+    if len(x) != len(y) or len(x) < 2:
         return None
 
-    isf = [par[0] for par in pares]
-    impulso = [par[1] for par in pares]
-    rho = _correlacion_spearman(isf, impulso)
+    rho = _correlacion_spearman(x, y)
     if rho is None:
         return None
 
@@ -321,24 +335,18 @@ def _spearman_isf_impulso_muestra(filas: list, semilla: int) -> dict | None:
     generador = random.Random(semilla)
     extremos = 0
     for _ in range(permutaciones):
-        rho_permutado = _correlacion_spearman(isf, generador.sample(impulso, len(impulso)))
+        rho_permutado = _correlacion_spearman(x, generador.sample(y, len(y)))
         if rho_permutado is not None and abs(rho_permutado) >= abs(rho) - 1e-12:
             extremos += 1
 
     return {
-        "n": len(pares),
+        "n": len(x),
         "rho": rho,
         "p_value": (extremos + 1) / (permutaciones + 1),
     }
 
 
-def spearman_isf_impulso(filas: list) -> dict:
-    """Calcula Spearman ISF-impulso y p por permutación dentro de cada muestra."""
-    resultados = {
-        muestra: _spearman_isf_impulso_muestra(filas_muestra, 20261007 + muestra)
-        for muestra, filas_muestra in agrupar_por_muestra(filas).items()
-    }
-
+def _ajustar_p_holm(resultados: dict) -> dict:
     ordenados = sorted(
         (
             (muestra, resultado["p_value"])
@@ -359,13 +367,111 @@ def spearman_isf_impulso(filas: list) -> dict:
     return resultados
 
 
+def _spearman_rmse_asimetria_muestra(
+    filas: list, rmse_por_sujeto_muestra: dict, muestra: int, semilla: int
+) -> dict | None:
+    pares = []
+    for fila in filas:
+        columnas_longitud = (LONGITUD_MAYOR, LONGITUD_CORTA)
+        if not all(
+            _es_numero_valido(fila.get(columna)) for columna in columnas_longitud
+        ):
+            continue
 
-def guardar_resultados(filas: list, path=PATH_RESULTADOS) -> str:
+        clave = (int(fila["num paciente"]), muestra)
+        rmse = rmse_por_sujeto_muestra.get(clave)
+        if rmse is not None:
+            asimetria = float(fila[LONGITUD_MAYOR]) - float(fila[LONGITUD_CORTA])
+            pares.append((asimetria, rmse))
+
+    asimetria = [par[0] for par in pares]
+    rmse = [par[1] for par in pares]
+    return _prueba_spearman_permutacion(asimetria, rmse, semilla)
+
+
+def spearman_rmse_asimetria(filas: list, filas_rmse: list) -> dict:
+    """Calcula Spearman RMSE-asimetría por muestra y ajusta p con Holm."""
+    rmse_por_sujeto_muestra = {}
+    for fila in filas_rmse:
+        clave = (int(fila["num paciente"]), int(fila[MUESTRA]))
+        if clave in rmse_por_sujeto_muestra:
+            raise ValueError(
+                f"Hay más de un RMSE para sujeto y muestra {clave}."
+            )
+        if _es_numero_valido(fila.get("RMSE_mm")):
+            rmse_por_sujeto_muestra[clave] = float(fila["RMSE_mm"])
+
+    resultados = {
+        muestra: _spearman_rmse_asimetria_muestra(
+            filas_muestra, rmse_por_sujeto_muestra, muestra, 20261021 + muestra
+        )
+        for muestra, filas_muestra in agrupar_por_muestra(filas).items()
+    }
+
+    return _ajustar_p_holm(resultados)
+
+
+def _interpretar_correlacion(rho: float | None) -> str:
+    if rho is None:
+        return "No calculable."
+
+    magnitud = abs(rho)
+    if magnitud < 0.2:
+        intensidad = "muy débil"
+    elif magnitud < 0.4:
+        intensidad = "débil"
+    elif magnitud < 0.6:
+        intensidad = "moderada"
+    elif magnitud < 0.8:
+        intensidad = "fuerte"
+    else:
+        intensidad = "muy fuerte"
+
+    if rho == 0:
+        return "Sin relación monotónica entre RMSE y diferencia de longitud."
+
+    direccion = "positiva" if rho > 0 else "negativa"
+    return f"Relación {intensidad} {direccion} entre RMSE y diferencia de longitud."
+
+
+def _spearman_isf_impulso_muestra(filas: list, semilla: int) -> dict | None:
+    pares = [
+        (float(fila[ISF]), diferencia_impulso(fila))
+        for fila in filas
+        if all(
+            _es_numero_valido(fila.get(columna))
+            for columna in (ISF, IMPULSO_DERECHO, IMPULSO_IZQUIERDO)
+        )
+    ]
+    isf = [par[0] for par in pares]
+    impulso = [par[1] for par in pares]
+    return _prueba_spearman_permutacion(isf, impulso, semilla)
+
+
+def spearman_isf_impulso(filas: list) -> dict:
+    """Calcula Spearman ISF-impulso y p por permutación dentro de cada muestra."""
+    resultados = {
+        muestra: _spearman_isf_impulso_muestra(filas_muestra, 20261007 + muestra)
+        for muestra, filas_muestra in agrupar_por_muestra(filas).items()
+    }
+
+    return _ajustar_p_holm(resultados)
+
+
+
+def guardar_resultados(
+    filas: list, path=PATH_RESULTADOS, filas_rmse: list | None = None
+) -> str:
     """Guarda en un TXT los cálculos estadísticos separados por muestra."""
     grupos = agrupar_por_muestra(filas)
     spearman_asimetria = spearman_asimetria_isf(filas)
     spearman_asimetria_impulso_resultados = spearman_asimetria_impulso(filas)
     spearman_isf_impulso_resultados = spearman_isf_impulso(filas)
+    spearman_rmse_resultados = (
+        spearman_rmse_asimetria(filas, filas_rmse)
+        if filas_rmse is not None
+        else {}
+    )
 
     def formato_numero(valor) -> str:
         return "No calculable" if valor is None else f"{valor:.6f}"
@@ -381,6 +487,20 @@ def guardar_resultados(filas: list, path=PATH_RESULTADOS) -> str:
             "Spearman asimetría de longitud y diferencia absoluta de impulsos: "
             f"{formato_numero(spearman_asimetria_impulso_resultados[muestra])}"
         )
+        if filas_rmse is not None:
+            spearman_rmse = spearman_rmse_resultados[muestra]
+            if spearman_rmse is None:
+                lineas.append("Spearman RMSE y asimetría de longitud: No calculable")
+            else:
+                lineas.append(
+                    "Spearman RMSE y asimetría de longitud: "
+                    f"n={spearman_rmse['n']}, rho={formato_numero(spearman_rmse['rho'])}, "
+                    f"p-permutación={formato_numero(spearman_rmse['p_value'])}, "
+                    f"p-Holm={formato_numero(spearman_rmse['p_value_holm'])}"
+                )
+                lineas.append(
+                    f"Interpretación: {_interpretar_correlacion(spearman_rmse['rho'])}"
+                )
         spearman_relacion = spearman_isf_impulso_resultados[muestra]
         if spearman_relacion is None:
             lineas.append("Spearman ISF y diferencia absoluta de impulsos: No calculable")
@@ -404,8 +524,8 @@ def guardar_resultados(filas: list, path=PATH_RESULTADOS) -> str:
 if __name__ == "__main__":
     estadisticas()
     datos = leer_estadisticas()
-    ruta_resultados = guardar_resultados(datos)
+    datos_rmse = leer_rmse()
+    ruta_resultados = guardar_resultados(datos, filas_rmse=datos_rmse)
     print(f"Resultados guardados en: {ruta_resultados}")
     ruta_grafica = graficar_isf_id(datos)
     print(f"Mapa de dispersión ISF-ID guardado en: {ruta_grafica}")
-

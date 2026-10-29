@@ -190,14 +190,22 @@ def CALCULO_ID():
         print(resultado, end="")
 
         ruta_salida = os.path.join(
-            "Baropodometrias Procesadas",
+            "Baropodometrias procesadas",
             f"Subject{num_paciente}",
             f"Muestra{num_muestra}",
             f"resumen_{num_muestra}.txt",
         )
         os.makedirs(os.path.dirname(ruta_salida), exist_ok=True)
-        with open(ruta_salida, "a", newline="", encoding="utf-8") as archive:
-            archive.write(resultado)
+        lineas_previas = []
+        if os.path.exists(ruta_salida):
+            with open(ruta_salida, "r", encoding="utf-8", errors="ignore") as prev_file:
+                for prev_line in prev_file:
+                    texto = prev_line.strip()
+                    if texto and "promedio impulso" not in texto:
+                        lineas_previas.append(texto)
+        lineas_previas.append(resultado.strip())
+        with open(ruta_salida, "w", newline="", encoding="utf-8") as archive:
+            archive.write("\n".join(lineas_previas) + "\n")
 
 if __name__ == "__main__":
     # Validación rápida de una ventana sin recorrer todo el dataset.
@@ -206,5 +214,3 @@ if __name__ == "__main__":
     # Si querés correr la versión completa, descomentá estas líneas:
     frames_placa = CALCULO_ID()
     # print(f"Para el frame 10 el mapa de presiones será: f{frames_placa[9]}")
-
-

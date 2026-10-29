@@ -1,36 +1,36 @@
 Resultados estadísticos por muestra
 
 Muestra 1 (n=15)
-Spearman asimetría de longitud (longitud mayor - menor) e ISF: 0.205785
+Spearman asimetría de longitud (longitud mayor - menor) e ISF: 0.010714
 Spearman asimetría de longitud y diferencia absoluta de impulsos: -0.039286
 Spearman RMSE y asimetría de longitud: n=15, rho=0.203571, p-permutación=0.455700, p-Holm=1.000000
 Interpretación: Relación débil positiva entre RMSE y diferencia de longitud.
-Spearman ISF y diferencia absoluta de impulsos: n=15, rho=0.107612, p-permutación=0.701500, p-Holm=1.000000
+Spearman ISF y diferencia absoluta de impulsos: n=15, rho=0.464286, p-permutación=0.088800, p-Holm=0.444000
 
 Muestra 3 (n=16)
-Spearman asimetría de longitud (longitud mayor - menor) e ISF: -0.392450
+Spearman asimetría de longitud (longitud mayor - menor) e ISF: 0.141176
 Spearman asimetría de longitud y diferencia absoluta de impulsos: -0.052941
 Spearman RMSE y asimetría de longitud: n=16, rho=-0.094118, p-permutación=0.726400, p-Holm=1.000000
 Interpretación: Relación muy débil negativa entre RMSE y diferencia de longitud.
-Spearman ISF y diferencia absoluta de impulsos: n=16, rho=0.211198, p-permutación=0.429400, p-Holm=1.000000
+Spearman ISF y diferencia absoluta de impulsos: n=16, rho=-0.100000, p-permutación=0.711500, p-Holm=1.000000
 
 Muestra 5 (n=16)
-Spearman asimetría de longitud (longitud mayor - menor) e ISF: 0.454726
+Spearman asimetría de longitud (longitud mayor - menor) e ISF: 0.038235
 Spearman asimetría de longitud y diferencia absoluta de impulsos: 0.320588
 Spearman RMSE y asimetría de longitud: n=16, rho=0.023529, p-permutación=0.930600, p-Holm=1.000000
 Interpretación: Relación muy débil positiva entre RMSE y diferencia de longitud.
-Spearman ISF y diferencia absoluta de impulsos: n=16, rho=0.476755, p-permutación=0.064400, p-Holm=0.322000
+Spearman ISF y diferencia absoluta de impulsos: n=16, rho=0.055882, p-permutación=0.841200, p-Holm=1.000000
 
 Muestra 7 (n=16)
-Spearman asimetría de longitud (longitud mayor - menor) e ISF: 0.679630
+Spearman asimetría de longitud (longitud mayor - menor) e ISF: -0.208824
 Spearman asimetría de longitud y diferencia absoluta de impulsos: 0.238235
 Spearman RMSE y asimetría de longitud: n=16, rho=-0.002941, p-permutación=0.995000, p-Holm=1.000000
 Interpretación: Relación muy débil negativa entre RMSE y diferencia de longitud.
-Spearman ISF y diferencia absoluta de impulsos: n=16, rho=0.133773, p-permutación=0.630800, p-Holm=1.000000
+Spearman ISF y diferencia absoluta de impulsos: n=16, rho=0.214706, p-permutación=0.422700, p-Holm=1.000000
 
 Muestra 9 (n=16)
-Spearman asimetría de longitud (longitud mayor - menor) e ISF: 0.545466
+Spearman asimetría de longitud (longitud mayor - menor) e ISF: 0.079412
 Spearman asimetría de longitud y diferencia absoluta de impulsos: 0.102941
 Spearman RMSE y asimetría de longitud: n=16, rho=-0.152941, p-permutación=0.571200, p-Holm=1.000000
 Interpretación: Relación muy débil negativa entre RMSE y diferencia de longitud.
-Spearman ISF y diferencia absoluta de impulsos: n=16, rho=0.037338, p-permutación=0.889100, p-Holm=1.000000
+Spearman ISF y diferencia absoluta de impulsos: n=16, rho=-0.335294, p-permutación=0.207000, p-Holm=0.828000

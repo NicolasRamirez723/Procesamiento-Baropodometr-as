@@ -15,28 +15,22 @@ def read_data(verificar=True,graficar=False):
         Se extraen trayectoria de COP para x e y, COP_y vs COP_x y fuerza-t
         """
 
-        RAIZ = "Baropodometrias Procesadas"
+        RAIZ = "Baropodometrias procesadas"
 
 
         if verificar:
+            archivos_resumen = []
+            if os.path.exists(RAIZ):
+                for dirpath, dirnames, filenames in os.walk(RAIZ):
+                    for filename in filenames:
+                        if filename.startswith("resumen_") and filename.endswith(".txt"):
+                            archivos_resumen.append(os.path.join(dirpath, filename))
 
+            if not archivos_resumen:
+                return read_data(verificar=False, graficar=graficar)
 
-            for dirpath, dirnames, filenames in os.walk(RAIZ):
-                for filename in filenames:
-                    if filename.endswith(".txt"):
-                        ruta_txt = os.path.join(dirpath, filename)
-
-                        if os.path.exists(ruta_txt):
-                            # Leer solo si existe
-                            with open(ruta_txt, "r", newline="") as f:
-                                contenido = f.read()
-                        else:
-
-                            print("No existe:", ruta_txt)
-
-                            read_data(verificar=False)
-
-            return print("Ya existen las carpetas con las muestras de cada paciente")
+            print("Ya existen las carpetas con las muestras de cada paciente")
+            return None
                 
 
         todos_cop_x = {}
@@ -45,7 +39,7 @@ def read_data(verificar=True,graficar=False):
         todos_cop_x_l = {}
         PATH = f"data/muestras/The nature of functional variability in plantar pressure during a range of controlled walking speeds"
 
-        for archivo in os.listdir(path=PATH):
+        for archivo in sorted(os.listdir(path=PATH)):
 
             
             if archivo.endswith(".txt"):
@@ -82,12 +76,15 @@ def read_data(verificar=True,graficar=False):
                 # Estado de cada pie: evita reiniciar el tiempo mientras el pie continúa apoyado.
                 apoyo_derecho = False
                 apoyo_izquierdo = False
-                tr_i = None|float
-                tl_i = None|float
+                tr_i: float | None = None
+                tl_i: float | None = None
                 try:
-                    with open(NEW_PATH,"r") as file:
+                    with open(NEW_PATH,"r", encoding="utf-8", errors="ignore") as file:
 
                         for line in file:
+                            # Detener la lectura al finalizar el resumen e iniciar las matrices de la plataforma
+                            if line.lstrip().startswith("Platform"):
+                                break
 
                             #FORMATO FRAME: [Time (ms),	Position (m),l force (N),	r force (N)	, Butterfly.force(N),	Butterfly.x (mm),	Butterfly.y (mm)]
                             
@@ -110,16 +107,15 @@ def read_data(verificar=True,graficar=False):
                                 FP_frames_r.append(fuerza_derecha)
 
                                 # NaN corta la línea cuando no existe COP válido.
+                                # Se aíslan únicamente los instantes de apoyo monopodal sin agregar ceros artificiales.
 
-                                if fuerza_derecha and not fuerza_izquierda:
+                                if fuerza_derecha > 0 and not fuerza_izquierda:
+                                    if np.isfinite(cop_x):
+                                        COP_frames_x_r.append(cop_x)
 
-                                    COP_frames_x_r.append(cop_x if np.isfinite(cop_x) else np.nan)
-                                    COP_frames_x_l.append(0)
-
-
-                                if fuerza_izquierda and not fuerza_derecha:
-                                    COP_frames_x_l.append(cop_x if np.isfinite(cop_x) else np.nan)
-                                    COP_frames_x_r.append(0)
+                                if fuerza_izquierda > 0 and not fuerza_derecha:
+                                    if np.isfinite(cop_x):
+                                        COP_frames_x_l.append(cop_x)
 
                                 COP_frames_x.append(cop_x if np.isfinite(cop_y) else np.nan)
                                 COP_frames_y.append(cop_y if np.isfinite(cop_y) else np.nan)
@@ -174,6 +170,14 @@ def read_data(verificar=True,graficar=False):
                     os.makedirs(carpeta_muestra,exist_ok=True)
 
                     archivo_resumen = os.path.join(carpeta_muestra, f"resumen_{num_muestra}.txt")
+                    lineas_extra = []
+                    if os.path.exists(archivo_resumen):
+                        with open(archivo_resumen, "r", encoding="utf-8", errors="ignore") as prev_file:
+                            for prev_line in prev_file:
+                                texto = prev_line.strip()
+                                if texto.startswith("ISF") or "promedio impulso" in texto:
+                                    lineas_extra.append(texto)
+
                     with open(archivo_resumen, "w", newline="", encoding="utf-8") as archive:
                         # "Tiempo de apoyo medio pie izquierdo y derecho"
                         t_a_m_r = np.mean(time_r)
@@ -181,12 +185,15 @@ def read_data(verificar=True,graficar=False):
                         FP_m_r = np.mean(FP_frames_r)
                         FP_m_l = np.mean(FP_frames_l)
 
-                        # Guardamos registro de los tiempos de apoyo medio para posteriormente calcular el impulso dinámico
-                        archive.write(
+                        # Guardamos registro de los tiempos de apoyo medio preservando métricas de ISF e Impulso Dinámico si ya existen
+                        contenido_resumen = (
                             f"Registro {archivo}. \nTiempo de apoyo medio pie izquierdo: {t_a_m_l}, "
                             f"fuerza puntual media pie izquierdo {FP_m_l}\nTiempo de apoyo medio pie derecho: "
                             f"{t_a_m_r}, fuerza puntual media pie derecho {FP_m_r}"
                         )
+                        if lineas_extra:
+                            contenido_resumen += "\n" + "\n".join(lineas_extra) + "\n"
+                        archive.write(contenido_resumen)
 
                     if graficar:
                         # Las gráficas usan solo los primeros 5000 frames; los cálculos anteriores usan todo el registro.
@@ -257,6 +264,7 @@ def read_data(verificar=True,graficar=False):
                         plt.tight_layout()
 
                         plt.savefig(os.path.join(carpeta_muestra,f"Fuerzas_registro_{archivo}.png"))
+                        plt.close(fig)
 
                         print("Registro baropodométrico procesado y guardado correctamente")
 
@@ -271,4 +279,3 @@ def read_data(verificar=True,graficar=False):
 if __name__ == "__main__":
 
     read_data(verificar=False)
-  

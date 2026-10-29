@@ -23,6 +23,8 @@ def leer_baropodometria(ruta_txt):
     tiempo_ms, fr, cx = [], [], []
     with open(ruta_txt, "r", encoding="utf-8", errors="ignore") as f:
         for linea in f:
+            if linea.lstrip().startswith("Platform"):
+                break
             campos = linea.strip().split()
             if len(campos) < 7:
                 continue

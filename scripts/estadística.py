@@ -3,6 +3,10 @@ import math
 import os
 import random
 import re
+import statistics
+import tempfile
+
+os.environ.setdefault("MPLCONFIGDIR", os.path.join(tempfile.gettempdir(), "mpl_baro_cache"))
 
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
@@ -13,6 +17,9 @@ PATH_CSV_RMSE = os.path.join(
     "Baropodometrias procesadas", "Resultados_Estadisticos_RMSE.csv"
 )
 PATH_RESULTADOS = os.path.join("Estadisticas", "resultados_estadisticos.txt")
+PATH_RESUMEN_DESCRIPTIVO = os.path.join(
+    "Estadisticas", "mediana_varianza_por_muestra.csv"
+)
 PATH_GRAFICA_ISF_ID = os.path.join("Estadisticas", "mapa_dispersion_isf_id.png")
 LONGITUD_CORTA = "longitud estimada del miembro corto"
 LONGITUD_MAYOR = "longitud del miembro mayor"
@@ -20,6 +27,7 @@ ISF = "ISF"
 IMPULSO_DERECHO = "promedio impulso derecho"
 IMPULSO_IZQUIERDO = "promedio impulso izquierdo"
 MUESTRA = "muestra"
+MUESTRA_A_VELOCIDAD = {1: 1.1, 3: 1.3, 5: 1.5, 7: 1.7, 9: 1.9}
 
 
 def estimar_longitud(t_mayor: float, t_menor: float, longitud_mayor: float) -> float:
@@ -367,6 +375,23 @@ def _ajustar_p_holm(resultados: dict) -> dict:
     return resultados
 
 
+def _indexar_rmse_por_sujeto_muestra(filas_rmse: list) -> dict:
+    """Indexa frecuencia de zancada y RMSE por (sujeto, muestra) validando unicidad."""
+    indice = {}
+    for fila in filas_rmse:
+        clave = (int(fila["num paciente"]), int(fila[MUESTRA]))
+        if clave in indice:
+            raise ValueError(
+                f"Hay más de un RMSE para sujeto y muestra {clave}."
+            )
+        registro = {}
+        for columna in ("Frec_Zancada_Hz", "RMSE_mm"):
+            if _es_numero_valido(fila.get(columna)):
+                registro[columna] = float(fila[columna])
+        indice[clave] = registro
+    return indice
+
+
 def _spearman_rmse_asimetria_muestra(
     filas: list, rmse_por_sujeto_muestra: dict, muestra: int, semilla: int
 ) -> dict | None:
@@ -391,15 +416,12 @@ def _spearman_rmse_asimetria_muestra(
 
 def spearman_rmse_asimetria(filas: list, filas_rmse: list) -> dict:
     """Calcula Spearman RMSE-asimetría por muestra y ajusta p con Holm."""
-    rmse_por_sujeto_muestra = {}
-    for fila in filas_rmse:
-        clave = (int(fila["num paciente"]), int(fila[MUESTRA]))
-        if clave in rmse_por_sujeto_muestra:
-            raise ValueError(
-                f"Hay más de un RMSE para sujeto y muestra {clave}."
-            )
-        if _es_numero_valido(fila.get("RMSE_mm")):
-            rmse_por_sujeto_muestra[clave] = float(fila["RMSE_mm"])
+    indice_rmse = _indexar_rmse_por_sujeto_muestra(filas_rmse)
+    rmse_por_sujeto_muestra = {
+        clave: reg["RMSE_mm"]
+        for clave, reg in indice_rmse.items()
+        if "RMSE_mm" in reg
+    }
 
     resultados = {
         muestra: _spearman_rmse_asimetria_muestra(
@@ -458,6 +480,151 @@ def spearman_isf_impulso(filas: list) -> dict:
     return _ajustar_p_holm(resultados)
 
 
+def _valor_columna(fila: dict, columna: str) -> float | None:
+    return float(fila[columna]) if _es_numero_valido(fila.get(columna)) else None
+
+
+def _valor_diferencia_impulso(fila: dict) -> float | None:
+    if _es_numero_valido(fila.get(IMPULSO_DERECHO)) and _es_numero_valido(
+        fila.get(IMPULSO_IZQUIERDO)
+    ):
+        return diferencia_impulso(fila)
+    return None
+
+
+def _valor_asimetria_longitud(fila: dict, factor: float = 1.0) -> float | None:
+    if _es_numero_valido(fila.get(LONGITUD_MAYOR)) and _es_numero_valido(
+        fila.get(LONGITUD_CORTA)
+    ):
+        return (float(fila[LONGITUD_MAYOR]) - float(fila[LONGITUD_CORTA])) * factor
+    return None
+
+
+_ESPECIFICACIONES_ESTADISTICAS = [
+    ("tiempo de apoyo menor", "ms", "ms²", lambda f: _valor_columna(f, "tiempo de apoyo menor")),
+    ("tiempo de apoyo mayor", "ms", "ms²", lambda f: _valor_columna(f, "tiempo de apoyo mayor")),
+    (
+        "fuerza puntual promedio izquierda",
+        "N",
+        "N²",
+        lambda f: _valor_columna(f, "fuerza puntual promedio izquierda"),
+    ),
+    (
+        "fuerza puntual promedio derecha",
+        "N",
+        "N²",
+        lambda f: _valor_columna(f, "fuerza puntual promedio derecha"),
+    ),
+    ("ISF", "%", "%²", lambda f: _valor_columna(f, ISF)),
+    ("promedio impulso derecho", "N·s", "(N·s)²", lambda f: _valor_columna(f, IMPULSO_DERECHO)),
+    ("promedio impulso izquierdo", "N·s", "(N·s)²", lambda f: _valor_columna(f, IMPULSO_IZQUIERDO)),
+    (
+        "longitud estimada del miembro corto",
+        "m",
+        "m²",
+        lambda f: _valor_columna(f, LONGITUD_CORTA),
+    ),
+    ("longitud del miembro mayor", "m", "m²", lambda f: _valor_columna(f, LONGITUD_MAYOR)),
+    ("diferencia absoluta de impulsos", "N·s", "(N·s)²", _valor_diferencia_impulso),
+    ("asimetría de longitud (m)", "m", "m²", lambda f: _valor_asimetria_longitud(f, 1.0)),
+    ("asimetría de longitud (cm)", "cm", "cm²", lambda f: _valor_asimetria_longitud(f, 100.0)),
+]
+
+_ESPECIFICACIONES_RMSE = [
+    ("frecuencia de zancada", "Hz", "Hz²", "Frec_Zancada_Hz"),
+    ("RMSE CoG", "mm", "mm²", "RMSE_mm"),
+]
+
+
+def _resumir_valores(
+    nombre: str, unidad: str, unidad_varianza: str, valores: list[float]
+) -> dict:
+    """Calcula n, mediana y varianza muestral (n-1) para una serie de valores."""
+    n = len(valores)
+    return {
+        "variable": nombre,
+        "unidad": unidad,
+        "unidad_varianza": unidad_varianza,
+        "n": n,
+        "mediana": statistics.median(valores) if n >= 1 else None,
+        "varianza_muestral": statistics.variance(valores) if n >= 2 else None,
+    }
+
+
+def estadisticas_descriptivas_por_muestra(
+    filas: list, filas_rmse: list | None = None
+) -> dict:
+    """Calcula mediana y varianza muestral (n-1) por muestra para todas las variables."""
+    indice_rmse = (
+        _indexar_rmse_por_sujeto_muestra(filas_rmse)
+        if filas_rmse is not None
+        else None
+    )
+    resumen = {}
+
+    for muestra, filas_muestra in agrupar_por_muestra(filas).items():
+        items = []
+        for nombre, unidad, unidad_var, extractor in _ESPECIFICACIONES_ESTADISTICAS:
+            valores = [
+                val for val in (extractor(fila) for fila in filas_muestra)
+                if val is not None
+            ]
+            items.append(_resumir_valores(nombre, unidad, unidad_var, valores))
+
+        if indice_rmse is not None:
+            for nombre, unidad, unidad_var, col_rmse in _ESPECIFICACIONES_RMSE:
+                valores = []
+                for fila in filas_muestra:
+                    if not _es_numero_valido(fila.get("num paciente")):
+                        continue
+                    clave = (int(fila["num paciente"]), muestra)
+                    val = indice_rmse.get(clave, {}).get(col_rmse)
+                    if val is not None:
+                        valores.append(val)
+                items.append(_resumir_valores(nombre, unidad, unidad_var, valores))
+
+        resumen[muestra] = items
+
+    return resumen
+
+
+def guardar_mediana_varianza_csv(
+    resumen_descriptivo: dict, path=PATH_RESUMEN_DESCRIPTIVO
+) -> str:
+    """Exporta un CSV con mediana y varianza muestral (n-1) por muestra y variable."""
+    encabezados = [
+        "muestra",
+        "velocidad_m_s",
+        "variable",
+        "unidad",
+        "unidad_varianza",
+        "n",
+        "mediana",
+        "varianza_muestral",
+    ]
+    directorio = os.path.dirname(path)
+    if directorio:
+        os.makedirs(directorio, exist_ok=True)
+
+    with open(path, "w", newline="", encoding="utf-8") as archivo_csv:
+        escritor = csv.writer(archivo_csv)
+        escritor.writerow(encabezados)
+        for muestra, items in sorted(resumen_descriptivo.items()):
+            velocidad = MUESTRA_A_VELOCIDAD.get(muestra, "")
+            for item in items:
+                escritor.writerow([
+                    muestra,
+                    velocidad,
+                    item["variable"],
+                    item["unidad"],
+                    item["unidad_varianza"],
+                    item["n"],
+                    item["mediana"],
+                    item["varianza_muestral"],
+                ])
+
+    return path
+
 
 def guardar_resultados(
     filas: list, path=PATH_RESULTADOS, filas_rmse: list | None = None
@@ -471,6 +638,9 @@ def guardar_resultados(
         spearman_rmse_asimetria(filas, filas_rmse)
         if filas_rmse is not None
         else {}
+    )
+    resumen_descriptivo = estadisticas_descriptivas_por_muestra(
+        filas, filas_rmse=filas_rmse
     )
 
     def formato_numero(valor) -> str:
@@ -511,6 +681,13 @@ def guardar_resultados(
                 f"p-permutación={formato_numero(spearman_relacion['p_value'])}, "
                 f"p-Holm={formato_numero(spearman_relacion['p_value_holm'])}"
             )
+        lineas.append("Estadísticos descriptivos (mediana y varianza muestral, n-1):")
+        for item in resumen_descriptivo[muestra]:
+            lineas.append(
+                f"  - {item['variable']} ({item['unidad']}): "
+                f"n={item['n']}, mediana={formato_numero(item['mediana'])}, "
+                f"varianza={formato_numero(item['varianza_muestral'])} {item['unidad_varianza']}"
+            )
         lineas.append("")
 
     directorio = os.path.dirname(path)
@@ -525,6 +702,11 @@ if __name__ == "__main__":
     estadisticas()
     datos = leer_estadisticas()
     datos_rmse = leer_rmse()
+    resumen_descriptivo = estadisticas_descriptivas_por_muestra(
+        datos, filas_rmse=datos_rmse
+    )
+    ruta_descriptivo = guardar_mediana_varianza_csv(resumen_descriptivo)
+    print(f"Resumen mediana y varianza guardado en: {ruta_descriptivo}")
     ruta_resultados = guardar_resultados(datos, filas_rmse=datos_rmse)
     print(f"Resultados guardados en: {ruta_resultados}")
     ruta_grafica = graficar_isf_id(datos)

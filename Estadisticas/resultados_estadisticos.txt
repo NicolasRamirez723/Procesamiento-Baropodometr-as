@@ -6,6 +6,21 @@ Spearman asimetría de longitud y diferencia absoluta de impulsos: -0.039286
 Spearman RMSE y asimetría de longitud: n=15, rho=0.203571, p-permutación=0.455700, p-Holm=1.000000
 Interpretación: Relación débil positiva entre RMSE y diferencia de longitud.
 Spearman ISF y diferencia absoluta de impulsos: n=15, rho=0.464286, p-permutación=0.088800, p-Holm=0.444000
+Estadísticos descriptivos (mediana y varianza muestral, n-1):
+  - tiempo de apoyo menor (ms): n=15, mediana=698.921933, varianza=1632.269037 ms²
+  - tiempo de apoyo mayor (ms): n=15, mediana=707.924528, varianza=1791.445446 ms²
+  - fuerza puntual promedio izquierda (N): n=15, mediana=227.968530, varianza=831.138362 N²
+  - fuerza puntual promedio derecha (N): n=15, mediana=224.562197, varianza=809.667998 N²
+  - ISF (%): n=15, mediana=25.134814, varianza=2599.756218 %²
+  - promedio impulso derecho (N·s): n=15, mediana=206.865200, varianza=2449.741959 (N·s)²
+  - promedio impulso izquierdo (N·s): n=15, mediana=207.631600, varianza=2226.298720 (N·s)²
+  - longitud estimada del miembro corto (m): n=15, mediana=0.891426, varianza=0.011633 m²
+  - longitud del miembro mayor (m): n=15, mediana=0.920000, varianza=0.012766 m²
+  - diferencia absoluta de impulsos (N·s): n=15, mediana=14.131300, varianza=70.121293 (N·s)²
+  - asimetría de longitud (m) (m): n=15, mediana=0.014294, varianza=0.000301 m²
+  - asimetría de longitud (cm) (cm): n=15, mediana=1.429419, varianza=3.011227 cm²
+  - frecuencia de zancada (Hz): n=15, mediana=0.442000, varianza=0.000715 Hz²
+  - RMSE CoG (mm): n=15, mediana=30.251000, varianza=8.782177 mm²
 
 Muestra 3 (n=16)
 Spearman asimetría de longitud (longitud mayor - menor) e ISF: 0.141176
@@ -13,6 +28,21 @@ Spearman asimetría de longitud y diferencia absoluta de impulsos: -0.052941
 Spearman RMSE y asimetría de longitud: n=16, rho=-0.094118, p-permutación=0.726400, p-Holm=1.000000
 Interpretación: Relación muy débil negativa entre RMSE y diferencia de longitud.
 Spearman ISF y diferencia absoluta de impulsos: n=16, rho=-0.100000, p-permutación=0.711500, p-Holm=1.000000
+Estadísticos descriptivos (mediana y varianza muestral, n-1):
+  - tiempo de apoyo menor (ms): n=16, mediana=633.157895, varianza=1745.806736 ms²
+  - tiempo de apoyo mayor (ms): n=16, mediana=639.092973, varianza=1716.066213 ms²
+  - fuerza puntual promedio izquierda (N): n=16, mediana=260.561450, varianza=1334.887128 N²
+  - fuerza puntual promedio derecha (N): n=16, mediana=249.413935, varianza=1196.683754 N²
+  - ISF (%): n=16, mediana=81.692259, varianza=1784.235478 %²
+  - promedio impulso derecho (N·s): n=16, mediana=225.409800, varianza=3157.259052 (N·s)²
+  - promedio impulso izquierdo (N·s): n=16, mediana=231.218100, varianza=2749.146859 (N·s)²
+  - longitud estimada del miembro corto (m): n=16, mediana=0.887678, varianza=0.012835 m²
+  - longitud del miembro mayor (m): n=16, mediana=0.912500, varianza=0.012425 m²
+  - diferencia absoluta de impulsos (N·s): n=16, mediana=16.402250, varianza=136.568065 (N·s)²
+  - asimetría de longitud (m) (m): n=16, mediana=0.018718, varianza=0.000877 m²
+  - asimetría de longitud (cm) (cm): n=16, mediana=1.871797, varianza=8.767494 cm²
+  - frecuencia de zancada (Hz): n=16, mediana=0.481000, varianza=0.000837 Hz²
+  - RMSE CoG (mm): n=16, mediana=28.402500, varianza=6.977219 mm²
 
 Muestra 5 (n=16)
 Spearman asimetría de longitud (longitud mayor - menor) e ISF: 0.038235
@@ -20,6 +50,21 @@ Spearman asimetría de longitud y diferencia absoluta de impulsos: 0.320588
 Spearman RMSE y asimetría de longitud: n=16, rho=0.023529, p-permutación=0.930600, p-Holm=1.000000
 Interpretación: Relación muy débil positiva entre RMSE y diferencia de longitud.
 Spearman ISF y diferencia absoluta de impulsos: n=16, rho=0.055882, p-permutación=0.841200, p-Holm=1.000000
+Estadísticos descriptivos (mediana y varianza muestral, n-1):
+  - tiempo de apoyo menor (ms): n=16, mediana=591.793059, varianza=1571.083234 ms²
+  - tiempo de apoyo mayor (ms): n=16, mediana=593.220605, varianza=1581.292670 ms²
+  - fuerza puntual promedio izquierda (N): n=16, mediana=229.785575, varianza=1594.944365 N²
+  - fuerza puntual promedio derecha (N): n=16, mediana=217.725287, varianza=1355.063903 N²
+  - ISF (%): n=16, mediana=40.472053, varianza=1902.064731 %²
+  - promedio impulso derecho (N·s): n=16, mediana=190.984000, varianza=2269.492784 (N·s)²
+  - promedio impulso izquierdo (N·s): n=16, mediana=169.718450, varianza=2063.386304 (N·s)²
+  - longitud estimada del miembro corto (m): n=16, mediana=0.894878, varianza=0.012237 m²
+  - longitud del miembro mayor (m): n=16, mediana=0.912500, varianza=0.012425 m²
+  - diferencia absoluta de impulsos (N·s): n=16, mediana=12.138150, varianza=237.336802 (N·s)²
+  - asimetría de longitud (m) (m): n=16, mediana=0.016281, varianza=0.000199 m²
+  - asimetría de longitud (cm) (cm): n=16, mediana=1.628143, varianza=1.986046 cm²
+  - frecuencia de zancada (Hz): n=16, mediana=0.505000, varianza=0.001087 Hz²
+  - RMSE CoG (mm): n=16, mediana=25.868000, varianza=7.144437 mm²
 
 Muestra 7 (n=16)
 Spearman asimetría de longitud (longitud mayor - menor) e ISF: -0.208824
@@ -27,6 +72,21 @@ Spearman asimetría de longitud y diferencia absoluta de impulsos: 0.238235
 Spearman RMSE y asimetría de longitud: n=16, rho=-0.002941, p-permutación=0.995000, p-Holm=1.000000
 Interpretación: Relación muy débil negativa entre RMSE y diferencia de longitud.
 Spearman ISF y diferencia absoluta de impulsos: n=16, rho=0.214706, p-permutación=0.422700, p-Holm=1.000000
+Estadísticos descriptivos (mediana y varianza muestral, n-1):
+  - tiempo de apoyo menor (ms): n=16, mediana=549.133885, varianza=1265.541962 ms²
+  - tiempo de apoyo mayor (ms): n=16, mediana=554.771984, varianza=1179.660906 ms²
+  - fuerza puntual promedio izquierda (N): n=16, mediana=222.188627, varianza=1140.922911 N²
+  - fuerza puntual promedio derecha (N): n=16, mediana=218.529685, varianza=1126.398499 N²
+  - ISF (%): n=16, mediana=60.827623, varianza=1974.866048 %²
+  - promedio impulso derecho (N·s): n=16, mediana=180.258550, varianza=2265.853252 (N·s)²
+  - promedio impulso izquierdo (N·s): n=16, mediana=168.593050, varianza=1583.082014 (N·s)²
+  - longitud estimada del miembro corto (m): n=16, mediana=0.881528, varianza=0.013363 m²
+  - longitud del miembro mayor (m): n=16, mediana=0.912500, varianza=0.012425 m²
+  - diferencia absoluta de impulsos (N·s): n=16, mediana=6.846850, varianza=241.989542 (N·s)²
+  - asimetría de longitud (m) (m): n=16, mediana=0.020172, varianza=0.000372 m²
+  - asimetría de longitud (cm) (cm): n=16, mediana=2.017249, varianza=3.721763 cm²
+  - frecuencia de zancada (Hz): n=16, mediana=0.543000, varianza=0.001156 Hz²
+  - RMSE CoG (mm): n=16, mediana=25.491000, varianza=4.975179 mm²
 
 Muestra 9 (n=16)
 Spearman asimetría de longitud (longitud mayor - menor) e ISF: 0.079412
@@ -34,3 +94,18 @@ Spearman asimetría de longitud y diferencia absoluta de impulsos: 0.102941
 Spearman RMSE y asimetría de longitud: n=16, rho=-0.152941, p-permutación=0.571200, p-Holm=1.000000
 Interpretación: Relación muy débil negativa entre RMSE y diferencia de longitud.
 Spearman ISF y diferencia absoluta de impulsos: n=16, rho=-0.335294, p-permutación=0.207000, p-Holm=0.828000
+Estadísticos descriptivos (mediana y varianza muestral, n-1):
+  - tiempo de apoyo menor (ms): n=16, mediana=511.876980, varianza=1439.450773 ms²
+  - tiempo de apoyo mayor (ms): n=16, mediana=516.792678, varianza=1424.892050 ms²
+  - fuerza puntual promedio izquierda (N): n=16, mediana=234.724670, varianza=729.721235 N²
+  - fuerza puntual promedio derecha (N): n=16, mediana=232.311535, varianza=697.314458 N²
+  - ISF (%): n=16, mediana=30.873935, varianza=1184.238362 %²
+  - promedio impulso derecho (N·s): n=16, mediana=167.081100, varianza=1468.996989 (N·s)²
+  - promedio impulso izquierdo (N·s): n=16, mediana=156.467050, varianza=1036.150875 (N·s)²
+  - longitud estimada del miembro corto (m): n=16, mediana=0.890140, varianza=0.012792 m²
+  - longitud del miembro mayor (m): n=16, mediana=0.912500, varianza=0.012425 m²
+  - diferencia absoluta de impulsos (N·s): n=16, mediana=7.278800, varianza=342.764486 (N·s)²
+  - asimetría de longitud (m) (m): n=16, mediana=0.019904, varianza=0.000187 m²
+  - asimetría de longitud (cm) (cm): n=16, mediana=1.990421, varianza=1.872754 cm²
+  - frecuencia de zancada (Hz): n=16, mediana=0.575000, varianza=0.001970 Hz²
+  - RMSE CoG (mm): n=16, mediana=24.140500, varianza=5.911391 mm²

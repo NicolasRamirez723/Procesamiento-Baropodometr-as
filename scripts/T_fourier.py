@@ -6,11 +6,45 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 from Procesamiento_baropodometrias import read_data
-from scipy.signal import welch
+from scipy.signal import butter, sosfiltfilt, welch
 
 
 FS_MUESTREO = 100.0
 DT_MUESTREO = 1.0 / FS_MUESTREO
+ORDEN_FILTRO_RECHAZA_BANDA = 4
+FRACCION_BANDA_RECHAZO = 0.25
+MIN_SEMIBANDA_HZ = 0.05
+
+
+def filtrar_frecuencia_central(
+    signal,
+    dominant_freq,
+    fs=FS_MUESTREO,
+    order=ORDEN_FILTRO_RECHAZA_BANDA,
+    band_fraction=FRACCION_BANDA_RECHAZO,
+    min_band_hz=MIN_SEMIBANDA_HZ,
+):
+    """Aplica un filtro Butterworth rechaza-banda de fase cero alrededor de |dominant_freq|.
+
+    Retorna (signal_filtrada, lowcut_hz, highcut_hz).
+    """
+    f_dom = abs(float(dominant_freq))
+    band = max(min_band_hz, f_dom * band_fraction)
+    nyquist = 0.5 * fs
+    lowcut = max(0.0, f_dom - band)
+    highcut = min(nyquist * 0.99, f_dom + band)
+
+    if highcut <= 0.0 or lowcut >= nyquist or len(signal) <= 3 * (2 * order + 1):
+        return signal.copy(), lowcut, highcut
+
+    if lowcut <= 1e-6:
+        sos = butter(order, highcut, btype="highpass", fs=fs, output="sos")
+    elif highcut >= nyquist * 0.99:
+        sos = butter(order, lowcut, btype="lowpass", fs=fs, output="sos")
+    else:
+        sos = butter(order, [lowcut, highcut], btype="bandstop", fs=fs, output="sos")
+
+    return sosfiltfilt(sos, signal), lowcut, highcut
 
 
 def calcular_f95(frecuencias, psd):
@@ -152,11 +186,11 @@ def FFT_COP(graficar_baro=False):
         dominant_x = freq_x[np.argmax(magnitud_x)]
         dominant_y = freq_y[np.argmax(magnitud_y)]
 
-        band_x = max(0.05, abs(dominant_x) * 0.25)
-        band_y = max(0.05, abs(dominant_y) * 0.25)
+        signal_anom_x, low_x, high_x = filtrar_frecuencia_central(signal_x, dominant_x)
+        signal_anom_y, low_y, high_y = filtrar_frecuencia_central(signal_y, dominant_y)
 
-        mask_anom_x = np.abs(np.abs(freq_x) - abs(dominant_x)) > band_x
-        mask_anom_y = np.abs(np.abs(freq_y) - abs(dominant_y)) > band_y
+        mag_anom_x = np.abs(np.fft.fft(signal_anom_x))
+        mag_anom_y = np.abs(np.fft.fft(signal_anom_y))
 
         orden_x = np.argsort(freq_x)
         orden_y = np.argsort(freq_y)
@@ -167,7 +201,7 @@ def FFT_COP(graficar_baro=False):
         ax_x.set_ylabel("|FFT|")
         ax_x.set_xlim(-2.0, 2.0)
         ax_x.grid(True, which="both", ls="--", alpha=0.5)
-        ax_x.set_title(f"Transformada de Fourier CoP - {os.path.splitext(archivo)[0]}")
+        ax_x.set_title(f"Transformada Discreta de Fourier (FFT) CoP - {nombre_sin_ext}")
         ax_x.legend()
 
         ax_y.plot(freq_y[orden_y], magnitud_y[orden_y], color="tab:orange", label="COP_y")
@@ -178,19 +212,23 @@ def FFT_COP(graficar_baro=False):
         ax_y.legend()
 
         anom_fig, (ax_anom_x, ax_anom_y) = plt.subplots(2, 1, figsize=(9, 8), sharex=True)
-        freq_anom_x = freq_x[mask_anom_x]
-        mag_anom_x = magnitud_x[mask_anom_x]
-        orden_anom_x = np.argsort(freq_anom_x)
-        ax_anom_x.plot(freq_anom_x[orden_anom_x], mag_anom_x[orden_anom_x], color="tab:blue", label="COP_x anómalo")
+        ax_anom_x.plot(
+            freq_x[orden_x],
+            mag_anom_x[orden_x],
+            color="tab:blue",
+            label=f"COP_x filtrado (Butterworth ord. {ORDEN_FILTRO_RECHAZA_BANDA}, {low_x:.2f}-{high_x:.2f} Hz)",
+        )
         ax_anom_x.set_ylabel("|FFT|")
-        ax_anom_x.set_title(f"Frecuencias anómalas - {os.path.splitext(archivo)[0]}")
+        ax_anom_x.set_title(f"Frecuencias anómalas (Butterworth rechaza-banda) - {nombre_sin_ext}")
         ax_anom_x.grid(True, ls="--", alpha=0.5)
         ax_anom_x.legend()
 
-        freq_anom_y = freq_y[mask_anom_y]
-        mag_anom_y = magnitud_y[mask_anom_y]
-        orden_anom_y = np.argsort(freq_anom_y)
-        ax_anom_y.plot(freq_anom_y[orden_anom_y], mag_anom_y[orden_anom_y], color="tab:orange", label="COP_y anómalo")
+        ax_anom_y.plot(
+            freq_y[orden_y],
+            mag_anom_y[orden_y],
+            color="tab:orange",
+            label=f"COP_y filtrado (Butterworth ord. {ORDEN_FILTRO_RECHAZA_BANDA}, {low_y:.2f}-{high_y:.2f} Hz)",
+        )
         ax_anom_y.set_ylabel("|FFT|")
         ax_anom_y.set_xlabel("f (Hz)")
         ax_anom_y.grid(True, ls="--", alpha=0.5)
